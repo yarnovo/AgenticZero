@@ -80,6 +80,7 @@ from .executor import ExecutionContext, GraphExecutor
 # 图代理和验证
 from .graph_proxy import GraphProxy
 from .graph_validator import GraphValidator
+from .graph_manager import GraphManager, GraphFileManager, GraphMemoryManager
 
 # 节点类型基类
 from .node_types import (
@@ -141,6 +142,10 @@ __all__ = [
     # 图代理和验证
     "GraphProxy",
     "GraphValidator",
+    # 图管理系统
+    "GraphManager",
+    "GraphFileManager", 
+    "GraphMemoryManager",
 ]
 
 # 版本信息
