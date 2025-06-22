@@ -194,8 +194,10 @@ def demo_advanced_operations():
 
     # 验证自定义节点
     custom_node = proxy.get_node("custom")
-    if hasattr(custom_node, "processor_type"):
-        print(f"  自定义节点处理器类型: {custom_node.processor_type}")
+    if custom_node and hasattr(custom_node, "processor_type"):
+        # 使用 getattr 避免类型检查错误
+        processor_type = getattr(custom_node, "processor_type", None)
+        print(f"  自定义节点处理器类型: {processor_type}")
 
 
 def demo_error_handling():

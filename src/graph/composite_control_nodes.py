@@ -74,7 +74,7 @@ class CompositeControlNode(ControlNode):
         self, from_id: str, to_id: str, condition: str | None = None
     ):
         """向子图添加边"""
-        self.sub_graph.add_edge(from_id, to_id, condition)
+        self.sub_graph.add_edge(from_id, to_id, condition or "default")
 
     def set_subgraph_start(self, node_id: str):
         """设置子图起始节点"""

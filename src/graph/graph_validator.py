@@ -8,6 +8,7 @@
 - 执行路径验证
 """
 
+from .atomic_control_nodes import BranchControlNode, ForkControlNode
 from .core import BaseNode, Graph, NodeStatus
 
 
@@ -99,24 +100,24 @@ class GraphValidator:
         node_type = type(node).__name__
 
         # BranchControlNode验证
-        if node_type in ["BranchControlNode", "BranchNode"]:
-            if not hasattr(node, "condition_func") or not node.condition_func:
+        if isinstance(node, BranchControlNode):
+            if not node.condition_func:
                 self.errors.append(
                     f"分支节点 '{node.node_id}' 缺少必需的 condition_func"
                 )
 
         # ForkControlNode验证
-        elif node_type in ["ForkControlNode", "ForkNode"]:
-            if hasattr(node, "fork_count"):
-                if not isinstance(node.fork_count, int) or node.fork_count < 2:
-                    self.errors.append(
-                        f"分叉节点 '{node.node_id}' 的 fork_count 必须是大于等于2的整数"
-                    )
+        elif isinstance(node, ForkControlNode):
+            if not isinstance(node.fork_count, int) or node.fork_count < 2:
+                self.errors.append(
+                    f"分叉节点 '{node.node_id}' 的 fork_count 必须是大于等于2的整数"
+                )
 
         # RetryNode验证
         elif node_type == "RetryNode":
             if hasattr(node, "max_retries"):
-                if not isinstance(node.max_retries, int) or node.max_retries < 1:
+                max_retries = getattr(node, "max_retries")
+                if not isinstance(max_retries, int) or max_retries < 1:
                     self.errors.append(
                         f"重试节点 '{node.node_id}' 的 max_retries 必须是正整数"
                     )
@@ -124,10 +125,8 @@ class GraphValidator:
         # TimeoutNode验证
         elif node_type == "TimeoutNode":
             if hasattr(node, "timeout_seconds"):
-                if (
-                    not isinstance(node.timeout_seconds, int | float)
-                    or node.timeout_seconds <= 0
-                ):
+                timeout_seconds = getattr(node, "timeout_seconds")
+                if not isinstance(timeout_seconds, int | float) or timeout_seconds <= 0:
                     self.errors.append(
                         f"超时节点 '{node.node_id}' 的 timeout_seconds 必须是正数"
                     )
@@ -257,12 +256,9 @@ class GraphValidator:
                         f"分支节点 '{node_id}' 的所有出边使用相同的action，可能无法正确分支"
                     )
 
-            elif node_type in ["ForkControlNode", "ForkNode"]:
+            elif isinstance(node, ForkControlNode):
                 outgoing_edges = graph.get_outgoing_edges(node_id)
-                if (
-                    hasattr(node, "fork_count")
-                    and len(outgoing_edges) != node.fork_count
-                ):
+                if len(outgoing_edges) != node.fork_count:
                     self.warnings.append(
                         f"分叉节点 '{node_id}' 的出边数量({len(outgoing_edges)})与fork_count({node.fork_count})不匹配"
                     )

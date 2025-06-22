@@ -307,7 +307,10 @@ class TestResumableExecutor:
 
         # 验证执行完成
         assert "task3" in context.visited_nodes
-        assert context.graph_output["final"]["result"]["step1"] == "test"
+        assert context.graph_output is not None
+        final_output = context.graph_output.get("final")
+        assert final_output is not None
+        assert final_output["result"]["step1"] == "test"
 
     @pytest.mark.asyncio
     async def test_hook_execution(self):

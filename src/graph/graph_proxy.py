@@ -39,6 +39,7 @@ class GraphProxy:
         self._auto_validate = auto_validate
         self._validator = GraphValidator()
         self._node_factory = self._get_default_node_factory()
+        self._description: str = ""
 
     @classmethod
     def create(cls, name: str, description: str = "") -> "GraphProxy":

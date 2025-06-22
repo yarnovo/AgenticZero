@@ -48,6 +48,7 @@ class TestGraphProxy:
 
         assert proxy.update_node("task1", name="新名称", priority="high")
         node = proxy.get_node("task1")
+        assert node is not None
         assert node.name == "新名称"
         assert node.metadata.get("priority") == "high"
 
@@ -61,6 +62,7 @@ class TestGraphProxy:
         assert proxy.has_edge("task1", "task2")
 
         edge = proxy.get_edge("task1", "task2")
+        assert edge is not None
         assert edge.weight == 2.0
 
     def test_remove_edge(self):
@@ -133,7 +135,9 @@ class TestGraphProxy:
         # 从字典恢复
         proxy2 = GraphProxy.from_dict(data)
         assert proxy2.has_node("task1")
-        assert proxy2.get_node("task1").name == "任务1"
+        node = proxy2.get_node("task1")
+        assert node is not None
+        assert node.name == "任务1"
 
     def test_batch_operations(self):
         """测试批量操作"""

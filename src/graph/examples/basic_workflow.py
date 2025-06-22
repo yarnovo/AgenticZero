@@ -5,6 +5,7 @@
 """
 
 import asyncio
+from pathlib import Path
 
 from src.graph import (
     BranchControlNode,
@@ -109,7 +110,7 @@ async def main():
     # 保存快照
     if executor.snapshots:
         snapshot = executor.snapshots[-1]
-        graph.save_snapshot(snapshot, "workflow_snapshot.json")
+        graph.save_snapshot(snapshot, Path("workflow_snapshot.json"))
         print("快照已保存到 workflow_snapshot.json")
 
 

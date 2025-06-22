@@ -14,7 +14,6 @@ from src.graph import (
     AgentProxy,
     AgentResponse,
     AIAnalyzer,
-    AIControlNode,
     AIEvaluator,
     AIGenerator,
     AIPlanner,
@@ -251,7 +250,8 @@ class TestAIControlNodes:
     def test_ai_control_node_creation(self):
         """测试AI控制节点创建"""
         agent = MockAgent()
-        node = AIControlNode("ai_ctrl1", "AI控制", agent=agent)
+        # AIControlNode 是抽象类，使用具体的子类 AIRouter 进行测试
+        node = AIRouter("ai_ctrl1", "AI控制", routes=["a", "b"], agent=agent)
 
         assert node.agent is agent
         assert node.sub_graph is not None

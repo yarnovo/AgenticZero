@@ -2,6 +2,7 @@
 target-version = "py312"
 line-length = 88
 
+[lint]
 # 只启用基础规则
 select = [
     "E",    # pycodestyle 错误

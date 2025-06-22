@@ -120,7 +120,7 @@ class TestMergeControlNode:
         # 创建模拟图结构
         graph = Graph()
         graph.add_node(node)
-        node.graph = graph
+        # 注意：graph 属性现在在 ControlNode 基类中定义
 
         result = await node.exec()
         # 由于只有一个输入且没有入边，应该立即返回

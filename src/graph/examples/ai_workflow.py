@@ -15,6 +15,7 @@ from src.graph import (
     AIEvaluator,
     AIGenerator,
     AIRouter,
+    AITaskNode,
     EnhancedGraph,
     IAgent,
     ResumableExecutor,
@@ -28,7 +29,7 @@ class MockLLMAgent(IAgent):
 
     def __init__(self, name: str):
         self.name = name
-        self.model_info = {"name": name, "type": "mock_llm"}
+        self._model_info = {"name": name, "type": "mock_llm"}
 
     async def think(
         self, messages: list[AgentMessage], context: dict[str, Any] | None = None
@@ -104,6 +105,16 @@ class MockLLMAgent(IAgent):
             if sum(scores.values()) / len(scores) > 0.8
             else "良好",
         }
+
+    @property
+    def capabilities(self) -> list[str]:
+        """获取能力列表"""
+        return ["think", "plan", "decide", "evaluate"]
+
+    @property
+    def model_info(self) -> dict[str, Any]:
+        """获取模型信息"""
+        return self._model_info
 
 
 async def main():
@@ -209,7 +220,8 @@ async def main():
     # 显示AI节点的对话历史
     print("\n=== AI对话历史 ===")
     for node_id, node in graph.nodes.items():
-        if hasattr(node, "conversation_history") and node.conversation_history:
+        # 类型检查：只处理 AI 节点
+        if isinstance(node, AITaskNode) and node.conversation_history:
             print(f"\n{node_id} 的对话:")
             for msg in node.conversation_history:
                 role = msg.role

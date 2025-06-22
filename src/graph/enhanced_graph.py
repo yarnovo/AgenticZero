@@ -356,7 +356,9 @@ class ResumableExecutor(GraphExecutor):
             # 从头开始
             return await self.execute(self.context.graph_input)
 
-    async def _continue_execution_from(self, node_id: str) -> ExecutionContext:
+    async def _continue_execution_from(
+        self, node_id: str, input_data: Any = None
+    ) -> ExecutionContext:
         """从指定节点继续执行"""
         # 获取当前节点
         current_node = self.graph.nodes.get(node_id)
@@ -365,7 +367,7 @@ class ResumableExecutor(GraphExecutor):
 
         # 如果节点未完成，先执行它
         if current_node.status != NodeStatus.SUCCESS:
-            await self._execute_node(current_node)
+            await self._execute_node(node_id, input_data or {})
 
         # 继续执行后续节点
         # 使用执行队列机制
@@ -379,7 +381,7 @@ class ResumableExecutor(GraphExecutor):
                 continue
 
             # 执行节点
-            await self._execute_node(current)
+            await self._execute_node(current_id, {})
 
             # 获取下一个节点
             next_node_id = await current.post()
@@ -388,7 +390,7 @@ class ResumableExecutor(GraphExecutor):
             if next_node_id == "__fork__":
                 # 处理分叉
                 edges = self.graph.get_outgoing_edges(current_id)
-                execution_queue.extend([e.to_node for e in edges])
+                execution_queue.extend([e.to_id for e in edges])
             elif next_node_id == "__waiting__":
                 # 节点正在等待，重新加入队列
                 execution_queue.append(current_id)
@@ -402,7 +404,7 @@ class ResumableExecutor(GraphExecutor):
                 # 默认继续执行下一个
                 edges = self.graph.get_outgoing_edges(current_id)
                 if edges:
-                    execution_queue.append(edges[0].to_node)
+                    execution_queue.append(edges[0].to_id)
 
             # 创建检查点
             if (

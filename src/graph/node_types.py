@@ -7,9 +7,12 @@
 from abc import abstractmethod
 from collections.abc import Callable
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .core import BaseNode
+
+if TYPE_CHECKING:
+    from .core import Graph
 
 
 class NodeCategory(Enum):
@@ -84,6 +87,7 @@ class ControlNode(BaseNode):
         super().__init__(node_id, name, **kwargs)
         self.category = NodeCategory.CONTROL
         self._control_result = None  # 存储控制决策结果
+        self.graph: Graph | None = None  # 对图的引用
 
     async def prep(self) -> None:
         """准备阶段 - 控制节点默认实现"""
@@ -106,7 +110,7 @@ class ControlNode(BaseNode):
         # 默认实现：返回第一个出边
         if hasattr(self, "graph") and self.graph:
             edges = self.graph.get_outgoing_edges(self.node_id)
-            return edges[0].to_node if edges else None
+            return edges[0].to_id if edges else None
         return None
 
     @abstractmethod
