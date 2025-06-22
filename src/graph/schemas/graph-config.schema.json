@@ -1,0 +1,409 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/yourusername/agenticzero/graph-config.schema.json",
+  "title": "AgenticZero Graph Configuration",
+  "description": "Configuration schema for AgenticZero graph workflows",
+  "type": "object",
+  "required": [
+    "name",
+    "start_node",
+    "end_nodes"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Name of the graph/workflow",
+      "minLength": 1,
+      "maxLength": 100,
+      "examples": [
+        "数据处理工作流",
+        "AI决策流程"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of the graph/workflow",
+      "maxLength": 500,
+      "examples": [
+        "处理用户数据并生成报告",
+        "智能路由和任务分配"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "description": "Version of the configuration",
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$",
+      "examples": [
+        "1.0",
+        "2.1.0"
+      ]
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional metadata for the graph",
+      "additionalProperties": true,
+      "examples": [
+        {
+          "author": "张三",
+          "team": "数据团队"
+        },
+        {
+          "category": "ETL",
+          "priority": "high"
+        }
+      ]
+    },
+    "start_node": {
+      "type": "string",
+      "description": "ID of the starting node",
+      "minLength": 1,
+      "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+      "examples": [
+        "start",
+        "input_processor"
+      ]
+    },
+    "end_nodes": {
+      "type": "array",
+      "description": "IDs of the ending nodes",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$"
+      },
+      "minItems": 1,
+      "uniqueItems": true,
+      "examples": [
+        [
+          "end"
+        ],
+        [
+          "success",
+          "failure"
+        ]
+      ]
+    },
+    "nodes": {
+      "type": "array",
+      "description": "List of nodes (array format)",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for the node",
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+            "minLength": 1,
+            "maxLength": 50,
+            "examples": [
+              "start",
+              "process_data",
+              "branch_1"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of the node",
+            "enum": [
+              "TaskNode",
+              "ControlNode",
+              "ExceptionNode",
+              "SequenceControlNode",
+              "BranchControlNode",
+              "MergeControlNode",
+              "ForkControlNode",
+              "JoinControlNode",
+              "TryCatchNode",
+              "RetryNode",
+              "TimeoutNode",
+              "CircuitBreakerNode",
+              "CompositeControlNode",
+              "AIRouter",
+              "AIPlanner",
+              "AIAnalyzer",
+              "AIGenerator",
+              "AIEvaluator",
+              "SequenceNode",
+              "BranchNode",
+              "MergeNode",
+              "ForkNode",
+              "JoinNode"
+            ],
+            "examples": [
+              "TaskNode",
+              "BranchControlNode"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the node",
+            "minLength": 1,
+            "maxLength": 100,
+            "examples": [
+              "数据处理",
+              "条件判断"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of what the node does",
+            "maxLength": 200,
+            "examples": [
+              "处理输入数据并转换格式",
+              "根据条件选择执行路径"
+            ]
+          },
+          "params": {
+            "type": "object",
+            "description": "Parameters specific to the node type",
+            "additionalProperties": true,
+            "examples": [
+              {
+                "timeout": 30,
+                "retry_count": 3
+              },
+              {
+                "condition_func": "lambda x: x > 10"
+              }
+            ]
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional metadata for the node",
+            "additionalProperties": true,
+            "examples": [
+              {
+                "category": "processing",
+                "author": "system"
+              },
+              {
+                "priority": "high",
+                "version": "2.0"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "examples": [
+        [
+          {
+            "id": "start",
+            "type": "TaskNode",
+            "name": "开始处理",
+            "description": "初始化处理流程",
+            "params": {
+              "timeout": 30
+            }
+          }
+        ]
+      ]
+    },
+    "edges": {
+      "type": "array",
+      "description": "List of edges connecting nodes",
+      "items": {
+        "type": "object",
+        "required": [
+          "from",
+          "to"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "description": "ID of the source node",
+            "minLength": 1,
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+            "examples": [
+              "start",
+              "branch_node"
+            ]
+          },
+          "to": {
+            "type": "string",
+            "description": "ID of the target node",
+            "minLength": 1,
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_]*$",
+            "examples": [
+              "process",
+              "end"
+            ]
+          },
+          "action": {
+            "type": "string",
+            "description": "Action or condition for the edge",
+            "default": "default",
+            "examples": [
+              "default",
+              "success",
+              "failure",
+              "high",
+              "low"
+            ]
+          },
+          "condition": {
+            "type": "string",
+            "description": "Condition expression (compatibility field)",
+            "examples": [
+              "x > 10",
+              "status == 'success'"
+            ]
+          },
+          "weight": {
+            "type": "number",
+            "description": "Weight of the edge",
+            "default": 1.0,
+            "minimum": 0,
+            "examples": [
+              1.0,
+              0.5,
+              2.0
+            ]
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Additional metadata for the edge",
+            "additionalProperties": true,
+            "examples": [
+              {
+                "priority": "high"
+              },
+              {
+                "description": "主要路径"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "default": [],
+      "examples": [
+        [
+          {
+            "from": "start",
+            "to": "process",
+            "action": "default",
+            "weight": 1.0
+          }
+        ]
+      ]
+    },
+    "custom_nodes": {
+      "type": "object",
+      "description": "Custom node type definitions",
+      "patternProperties": {
+        "^[a-zA-Z][a-zA-Z0-9_]*$": {
+          "type": "string",
+          "description": "Module path for custom node type",
+          "pattern": "^[a-zA-Z_][a-zA-Z0-9_.]*$",
+          "examples": [
+            "mypackage.nodes.CustomProcessor"
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "examples": [
+        {
+          "DataProcessor": "myapp.nodes.DataProcessor",
+          "MLPredictor": "myapp.ai.MLPredictor"
+        }
+      ]
+    }
+  },
+  "patternProperties": {
+    "^(?!name$|description$|version$|metadata$|start_node$|end_nodes$|nodes$|edges$|custom_nodes$)[a-zA-Z][a-zA-Z0-9_]*$": {
+      "type": "object",
+      "required": [
+        "type",
+        "name"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Type of the node",
+          "enum": [
+            "TaskNode",
+            "ControlNode",
+            "ExceptionNode",
+            "SequenceControlNode",
+            "BranchControlNode",
+            "MergeControlNode",
+            "ForkControlNode",
+            "JoinControlNode",
+            "TryCatchNode",
+            "RetryNode",
+            "TimeoutNode",
+            "CircuitBreakerNode",
+            "CompositeControlNode",
+            "AIRouter",
+            "AIPlanner",
+            "AIAnalyzer",
+            "AIGenerator",
+            "AIEvaluator",
+            "SequenceNode",
+            "BranchNode",
+            "MergeNode",
+            "ForkNode",
+            "JoinNode"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the node",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of what the node does",
+          "maxLength": 200
+        },
+        "params": {
+          "type": "object",
+          "description": "Parameters specific to the node type",
+          "additionalProperties": true
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional metadata for the node",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "name": "简单工作流",
+      "start_node": "input",
+      "end_nodes": [
+        "output"
+      ],
+      "nodes": [
+        {
+          "id": "input",
+          "type": "TaskNode",
+          "name": "输入"
+        },
+        {
+          "id": "output",
+          "type": "TaskNode",
+          "name": "输出"
+        }
+      ],
+      "edges": [
+        {
+          "from": "input",
+          "to": "output"
+        }
+      ]
+    }
+  ]
+}

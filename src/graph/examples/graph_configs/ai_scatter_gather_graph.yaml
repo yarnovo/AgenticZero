@@ -1,3 +1,6 @@
+$schema: ../../schemas/graph-config.schema.json
+
+
 name: "AI分散收集模式演示"
 description: "展示ScatterGatherNode - 多代理协作处理复杂任务"
 

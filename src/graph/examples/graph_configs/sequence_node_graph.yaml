@@ -1,3 +1,6 @@
+$schema: ../../schemas/graph-config.schema.json
+
+
 name: "顺序节点演示"
 description: "展示SequenceNode的使用方法 - 简单的数据处理流水线"
 

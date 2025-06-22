@@ -1,3 +1,6 @@
+$schema: ../../schemas/graph-config.schema.json
+
+
 name: "分支合并节点演示"
 description: "展示BranchNode和MergeNode的使用方法 - 条件分支处理"
 

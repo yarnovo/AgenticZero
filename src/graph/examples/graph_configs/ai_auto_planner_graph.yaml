@@ -1,3 +1,6 @@
+$schema: ../../schemas/graph-config.schema.json
+
+
 name: "AI自动规划演示"
 description: "展示自动任务规划和执行"
 

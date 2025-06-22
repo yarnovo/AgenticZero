@@ -1,3 +1,6 @@
+$schema: ../schemas/graph-config.schema.json
+
+
 description: 配置代理演示图
 edges:
 - action: default

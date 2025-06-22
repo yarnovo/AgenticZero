@@ -1,3 +1,6 @@
+$schema: ../../schemas/graph-config.schema.json
+
+
 name: "AI分层代理演示"
 description: "展示分层代理结构 - 监督者分配任务给专门工作者"
 

@@ -89,9 +89,6 @@ from .node_types import (
     TaskNode,
 )
 
-# YAML Schema
-from .yaml_schema import YAMLConfigSchema
-
 __all__ = [
     # 核心类
     "BaseNode",
@@ -144,7 +141,6 @@ __all__ = [
     # 图代理和验证
     "GraphProxy",
     "GraphValidator",
-    "YAMLConfigSchema",
 ]
 
 # 版本信息

@@ -1,3 +1,6 @@
+$schema: ../../schemas/graph-config.schema.json
+
+
 name: "AI意图路由演示"
 description: "展示IntentRouterNode的使用 - 根据用户意图智能路由"
 

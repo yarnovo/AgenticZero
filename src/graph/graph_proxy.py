@@ -7,8 +7,6 @@
 
 from typing import Any
 
-from .core import BaseNode, Edge, Graph, NodeStatus
-from .graph_validator import GraphValidator
 from .atomic_control_nodes import (
     BranchControlNode,
     ForkControlNode,
@@ -16,6 +14,8 @@ from .atomic_control_nodes import (
     MergeControlNode,
     SequenceControlNode,
 )
+from .core import BaseNode, Edge, Graph, NodeStatus
+from .graph_validator import GraphValidator
 from .node_types import TaskNode
 
 

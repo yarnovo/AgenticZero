@@ -1,3 +1,6 @@
+$schema: ../../schemas/graph-config.schema.json
+
+
 name: "分叉汇聚节点演示"
 description: "展示ForkNode和JoinNode的使用方法 - 并行处理"
 

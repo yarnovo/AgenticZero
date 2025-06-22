@@ -1,3 +1,6 @@
+$schema: ../../schemas/graph-config.schema.json
+
+
 name: "并行处理演示"
 description: "展示ParallelNode复合节点的使用方法"
 
