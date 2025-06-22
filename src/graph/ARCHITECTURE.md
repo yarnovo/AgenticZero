@@ -13,82 +13,85 @@ AgenticZero图框架采用分层架构设计，将节点系统分为三个主要
 
 ## 核心架构
 
-### 配置系统架构
+### 图操作系统架构
 
-AgenticZero提供完整的图配置系统，包括Schema验证、配置代理和文件管理：
+AgenticZero提供完整的图操作系统，包括图代理、验证器和YAML Schema：
 
-#### Schema验证架构
-
-```
-配置验证系统
-├── JSON Schema定义
-│   ├── 数组格式Schema (nodes数组)
-│   ├── 内联格式Schema (直接节点定义)
-│   ├── 节点Schema (类型、参数验证)
-│   └── 边Schema (连接关系验证)
-├── 语义验证器
-│   ├── 节点引用验证
-│   ├── 图连通性验证
-│   ├── 参数有效性验证
-│   └── 循环检测
-└── 错误报告
-    ├── 中文语义化错误信息
-    ├── 错误位置定位
-    └── 修复建议
-```
-
-#### 配置代理架构
+#### 图代理架构
 
 ```
-GraphConfigProxy
-├── 内存图表示
-├── CRUD操作API
-│   ├── 节点操作 (add/remove/update)
-│   ├── 边操作 (add/remove/update)
-│   ├── 起始/结束节点管理
-│   └── 元数据管理
+GraphProxy
+├── 内部Graph实例
+├── 节点操作API
+│   ├── add_node(支持字符串或类)
+│   ├── remove_node(自动清理边)
+│   ├── update_node(更新属性)
+│   └── 查询和列表操作
+├── 边操作API
+│   ├── add_edge(支持元数据)
+│   ├── remove_edge
+│   ├── update_edge
+│   └── 查询和列表操作
+├── 图分析功能
+│   ├── 路径查找
+│   ├── 环检测
+│   ├── 拓扑排序
+│   └── 邻居/前驱查询
 ├── 实时验证
 ├── 序列化支持
-│   ├── YAML格式
-│   ├── 字典格式
-│   └── 文件读写
+│   ├── to_dict()
+│   ├── to_json()
+│   └── from_dict()
 └── 高级操作
-    ├── 图克隆
-    ├── 图合并
-    ├── 统计信息
-    └── 冲突解决
+    ├── 克隆
+    ├── 合并
+    ├── 批量操作
+    └── 统计信息
 ```
 
-#### 支持的配置格式
+#### 图验证器架构
 
-**数组格式**（传统格式）：
-```yaml
-name: "工作流名称"
-nodes:
-  - id: "node1"
-    type: "TaskNode"
-    name: "节点1"
-edges:
-  - from: "node1"
-    to: "node2"
-start_node: "node1"
-end_nodes: ["node2"]
+```
+GraphValidator
+├── 基础结构验证
+│   ├── 节点存在性
+│   ├── 起始/结束节点
+│   └── 基本完整性
+├── 节点验证
+│   ├── 类型验证
+│   ├── 参数验证
+│   └── 状态验证
+├── 边验证
+│   ├── 节点引用
+│   ├── 权重验证
+│   └── 重复检查
+├── 连通性验证
+│   ├── 可达性检查
+│   ├── 孤立节点
+│   └── 死锁检测
+└── 执行路径验证
+    ├── 路径完整性
+    └── 特殊节点验证
 ```
 
-**内联格式**（简化格式）：
-```yaml
-name: "工作流名称"
-start_node: "node1"
-end_nodes: ["node2"]
-node1:
-  type: "TaskNode"
-  name: "节点1"
-node2:
-  type: "TaskNode"
-  name: "节点2"
-edges:
-  - from: "node1"
-    to: "node2"
+#### YAML Schema架构
+
+```
+YAMLConfigSchema
+├── JSON Schema定义
+│   ├── 根级别属性
+│   ├── 节点Schema
+│   ├── 边Schema
+│   └── 元数据Schema
+├── 节点类型定义
+│   ├── 基础节点类型
+│   ├── 控制节点类型
+│   ├── 异常节点类型
+│   └── AI节点类型
+└── 辅助功能
+    ├── Schema文件生成
+    ├── YAML头部生成
+    └── 节点参数Schema
 ```
 
 ### 节点层次结构
@@ -362,64 +365,62 @@ def custom_node_factory(node_data):
 - 版本控制
 - A/B测试能力
 
-## 配置系统使用指南
+## 图操作系统使用指南
 
-### 1. Schema验证
+### 1. 使用GraphProxy操作图
 
-#### 基础验证
+#### 基础操作
 ```python
-from src.graph.schema import validate_graph_config
+from src.graph import GraphProxy
 
-config = {
-    "name": "示例工作流",
-    "nodes": [...],
-    "edges": [...],
-    "start_node": "start",
-    "end_nodes": ["end"]
-}
+# 创建图代理
+proxy = GraphProxy.create("工作流", "示例工作流")
 
-valid, errors = validate_graph_config(config)
-if not valid:
-    for error in errors:
-        print(f"验证错误: {error}")
-```
-
-#### 文件验证
-```python
-from src.graph.schema import validate_graph_config_file
-
-valid, errors = validate_graph_config_file("workflow.yaml")
-```
-
-### 2. 配置代理使用
-
-#### 创建和操作图
-```python
-from src.graph.config_proxy import GraphConfigProxy
-
-# 创建空图
-proxy = GraphConfigProxy.create_empty("工作流名称", "描述")
-
-# 添加节点
-proxy.add_node("task1", "TaskNode", "任务1", 
-               description="处理数据",
-               params={"func": "process_data"},
-               metadata={"category": "data"})
+# 添加节点（使用字符串类型）
+proxy.add_node("task1", "TaskNode", "任务1")
+proxy.add_node("branch", "BranchControlNode", "分支",
+               condition_func=lambda x: x > 10)
 
 # 添加边
-proxy.add_edge("task1", "task2", action="success", weight=1.0)
+proxy.add_edge("task1", "branch")
+proxy.add_edge("branch", "task2", action="high", weight=2.0)
 
 # 设置起始和结束节点
-proxy.start_node = "task1"
+proxy.set_start_node("task1")
 proxy.add_end_node("task2")
 
-# 验证配置
+# 验证图结构
 if proxy.is_valid():
-    print("✅ 配置有效")
+    print("✅ 图结构有效")
 else:
-    errors = proxy.get_validation_errors()
-    for error in errors:
+    for error in proxy.get_validation_errors():
         print(f"❌ {error}")
+```
+
+#### 图分析
+```python
+# 路径查找
+if proxy.has_path("task1", "task2"):
+    paths = proxy.find_all_paths("task1", "task2")
+    print(f"找到{len(paths)}条路径")
+
+# 环检测
+cycles = proxy.detect_cycles()
+if cycles:
+    print(f"发现{len(cycles)}个环")
+
+# 拓扑排序
+try:
+    order = proxy.topological_sort()
+    print(f"拓扑顺序: {order}")
+except ValueError:
+    print("图中存在环，无法拓扑排序")
+
+# 获取统计信息
+stats = proxy.get_statistics()
+print(f"节点数: {stats['node_count']}")
+print(f"边数: {stats['edge_count']}")
+print(f"是否有环: {stats['has_cycles']}")
 ```
 
 #### 高级操作
@@ -428,69 +429,124 @@ else:
 cloned = proxy.clone()
 
 # 合并图
-merged = proxy1.merge(proxy2, conflict_strategy="override")
+other_proxy = GraphProxy.create("另一个工作流")
+other_proxy.add_sequence(["a", "b", "c"])
+proxy.merge(other_proxy, prefix="sub_")
 
-# 获取统计信息
-stats = proxy.get_statistics()
-print(f"节点数: {stats['node_count']}")
-print(f"边数: {stats['edge_count']}")
+# 批量添加节点
+nodes = [
+    ("n1", "TaskNode", "节点1", {}),
+    ("n2", "BranchControlNode", "分支", {"condition_func": lambda x: x}),
+]
+count = proxy.add_nodes_batch(nodes)
 
-# 序列化
-yaml_str = proxy.to_yaml()
-config_dict = proxy.to_dict()
+# 添加节点序列
+proxy.add_sequence(["step1", "step2", "step3"])
 
-# 保存到文件
-proxy.save_to_file("workflow.yaml")
+# 注册自定义节点类型
+class CustomNode(TaskNode):
+    pass
+
+proxy.register_node_type("CustomNode", CustomNode)
+proxy.add_node("custom", "CustomNode")
 ```
 
-### 3. 节点类型和参数
+### 2. 使用GraphValidator验证
 
-#### 支持的节点类型
-- **TaskNode**: 基础任务节点，无特殊参数要求
-- **BranchControlNode**: 分支节点，必需参数：`condition_func`
-- **RetryNode**: 重试节点，参数：`max_retries` (正整数), `retry_delay` (非负数)
-- **TimeoutNode**: 超时节点，参数：`timeout_seconds` (正数)
-- **AIRouter**: AI路由节点，必需参数：`routes` (至少2个元素的列表)
-
-#### 参数验证规则
 ```python
-# 分支节点示例
-proxy.add_node("branch", "BranchControlNode", "条件分支",
-               params={"condition_func": "lambda x: x > 10"})
+from src.graph import GraphValidator
 
-# 重试节点示例
-proxy.add_node("retry", "RetryNode", "重试处理",
-               params={"max_retries": 3, "retry_delay": 1.0})
+# 创建验证器
+validator = GraphValidator()
 
-# AI路由节点示例
-proxy.add_node("router", "AIRouter", "智能路由",
-               params={"routes": ["path_a", "path_b", "path_c"]})
+# 验证图结构
+valid, errors = validator.validate(proxy.graph)
+if not valid:
+    print("验证失败:")
+    for error in errors:
+        print(f"  - {error}")
+
+# 获取警告信息
+warnings = validator.get_warnings()
+for warning in warnings:
+    print(f"⚠️ {warning}")
+
+# 验证执行状态
+valid, errors = validator.validate_node_execution_state(proxy.graph)
 ```
 
-### 4. 错误处理和调试
+### 3. 使用YAML Schema
 
-#### 常见错误类型
-1. **节点引用错误**: 起始节点、结束节点或边引用不存在的节点
-2. **参数验证错误**: 节点类型特定的参数缺失或无效
-3. **连通性错误**: 从起始节点无法到达结束节点
-4. **重复定义**: 节点ID重复定义
+#### 生成Schema文件
+```python
+from src.graph import YAMLConfigSchema
+
+# 生成Schema文件
+YAMLConfigSchema.save_schema_file("graph-config.schema.json")
+
+# 获取YAML头部
+header = YAMLConfigSchema.get_yaml_header()
+print(header)
+```
+
+#### 配置示例
+```yaml
+# yaml-language-server: $schema=./graph-config.schema.json
+name: "数据处理工作流"
+start_node: input
+end_nodes: [output]
+
+nodes:
+  - id: input
+    type: TaskNode
+    name: 输入处理
+  - id: process
+    type: BranchControlNode
+    name: 条件判断
+    params:
+      condition_func: "lambda x: 'high' if x > 100 else 'low'"
+  - id: output
+    type: TaskNode
+    name: 输出结果
+
+edges:
+  - from: input
+    to: process
+  - from: process
+    to: output
+    action: high
+  - from: process
+    to: output
+    action: low
+```
+
+### 4. 常见错误和调试
+
+#### 常见错误
+1. **节点不存在**: 添加边时引用不存在的节点
+2. **参数错误**: 特定节点类型缺少必需参数
+3. **连通性问题**: 从起始节点无法到达结束节点
+4. **环检测**: 图中存在循环
 
 #### 调试技巧
 ```python
-# 获取详细的验证信息
-valid, errors = proxy.validate()
-if not valid:
-    print("配置验证失败:")
-    for i, error in enumerate(errors, 1):
-        print(f"  {i}. {error}")
+# 检查特定节点
+if proxy.has_node("task1"):
+    node = proxy.get_node("task1")
+    print(f"节点类型: {type(node).__name__}")
+    print(f"节点状态: {node.status}")
 
-# 检查图连通性
-stats = proxy.get_statistics()
-if stats["isolated_nodes"]:
-    print(f"发现孤立节点: {stats['isolated_nodes']}")
+# 检查边
+if proxy.has_edge("task1", "task2"):
+    edge = proxy.get_edge("task1", "task2")
+    print(f"边权重: {edge.weight}")
+    print(f"边动作: {edge.action}")
 
-# 分析节点和边
-print(f"节点类型分布: {stats['node_types']}")
-print(f"最大入度: {stats['max_in_degree']}")
-print(f"最大出度: {stats['max_out_degree']}")
+# 列出所有节点
+for node_id, node in proxy.list_nodes():
+    print(f"{node_id}: {node.name} ({type(node).__name__})")
+
+# 列出所有边
+for edge in proxy.list_edges():
+    print(f"{edge.from_id} --[{edge.action}]--> {edge.to_id}")
 ```

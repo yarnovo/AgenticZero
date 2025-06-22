@@ -58,8 +58,7 @@ from .config_parser import (
     load_graph_from_yaml,
 )
 
-# Schema验证和配置代理
-from .config_proxy import GraphConfigProxy
+# 核心类
 from .core import BaseNode, Edge, Graph, NodeStatus
 
 # 增强功能
@@ -78,6 +77,10 @@ from .exception_nodes import (
 )
 from .executor import ExecutionContext, GraphExecutor
 
+# 图代理和验证
+from .graph_proxy import GraphProxy
+from .graph_validator import GraphValidator
+
 # 节点类型基类
 from .node_types import (
     ControlNode,
@@ -85,12 +88,9 @@ from .node_types import (
     NodeCategory,
     TaskNode,
 )
-from .schema import (
-    GraphConfigSchema,
-    GraphConfigValidator,
-    validate_graph_config,
-    validate_graph_config_file,
-)
+
+# YAML Schema
+from .yaml_schema import YAMLConfigSchema
 
 __all__ = [
     # 核心类
@@ -141,12 +141,10 @@ __all__ = [
     "GraphConfigParser",
     "load_graph_from_yaml",
     "load_graph_from_dict",
-    # Schema验证和配置代理
-    "GraphConfigSchema",
-    "GraphConfigValidator",
-    "GraphConfigProxy",
-    "validate_graph_config",
-    "validate_graph_config_file",
+    # 图代理和验证
+    "GraphProxy",
+    "GraphValidator",
+    "YAMLConfigSchema",
 ]
 
 # 版本信息

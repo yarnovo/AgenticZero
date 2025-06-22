@@ -52,62 +52,92 @@ BaseNode (抽象基类)
 
 ## 快速开始
 
-### YAML配置验证
+### 图代理API
 
-使用新的Schema验证系统验证和操作图配置：
+使用GraphProxy操作内存中的图结构：
 
 ```python
-from src.graph.schema import validate_graph_config
-from src.graph.config_proxy import GraphConfigProxy
+from src.graph import GraphProxy, TaskNode, BranchControlNode
 
-# 1. 验证配置
-config = {
-    "name": "示例工作流",
-    "nodes": [
-        {"id": "start", "type": "TaskNode", "name": "开始"},
-        {"id": "process", "type": "BranchControlNode", "name": "分支处理", 
-         "params": {"condition_func": "lambda x: 'high' if x > 10 else 'low'"}},
-        {"id": "end", "type": "TaskNode", "name": "结束"}
-    ],
-    "edges": [
-        {"from": "start", "to": "process"},
-        {"from": "process", "to": "end", "action": "high"},
-        {"from": "process", "to": "end", "action": "low"}
-    ],
-    "start_node": "start",
-    "end_nodes": ["end"]
-}
+# 1. 创建图代理
+proxy = GraphProxy.create("示例工作流", "演示图代理API")
 
-valid, errors = validate_graph_config(config)
-if valid:
-    print("✅ 配置有效")
+# 2. 添加节点
+proxy.add_node("start", "TaskNode", "开始")
+proxy.add_node("process", "BranchControlNode", "分支处理",
+               condition_func=lambda x: "high" if x > 10 else "low")
+proxy.add_node("end", "TaskNode", "结束")
+
+# 3. 添加边
+proxy.add_edge("start", "process")
+proxy.add_edge("process", "end", action="high")
+proxy.add_edge("process", "end", action="low")
+
+# 4. 设置起始和结束节点
+proxy.set_start_node("start")
+proxy.add_end_node("end")
+
+# 5. 验证图结构
+if proxy.is_valid():
+    print("✅ 图结构有效")
 else:
+    errors = proxy.get_validation_errors()
     for error in errors:
         print(f"❌ {error}")
 
-# 2. 使用配置代理
-proxy = GraphConfigProxy.create_empty("我的工作流", "演示配置代理")
-
-# 添加节点
-proxy.add_node("task1", "TaskNode", "任务1", "处理数据",
-               params={"func": "process_data"})
-proxy.add_node("task2", "TaskNode", "任务2", "保存结果")
-
-# 添加边
-proxy.add_edge("task1", "task2")
-
-# 设置起始和结束节点
-proxy.start_node = "task1"
-proxy.add_end_node("task2")
-
-# 验证和保存
-if proxy.is_valid():
-    proxy.save_to_file("workflow.yaml")
-    print("✅ 工作流已保存")
-
-# 获取统计信息
+# 6. 获取统计信息
 stats = proxy.get_statistics()
 print(f"节点数: {stats['node_count']}, 边数: {stats['edge_count']}")
+
+# 7. 序列化
+data = proxy.to_dict()
+json_str = proxy.to_json()
+
+# 8. 图分析
+paths = proxy.find_all_paths("start", "end")
+print(f"从start到end的路径数: {len(paths)}")
+```
+
+### YAML配置Schema
+
+为YAML配置文件生成JSON Schema：
+
+```python
+from src.graph import YAMLConfigSchema
+
+# 生成Schema文件
+YAMLConfigSchema.save_schema_file("graph-config.schema.json")
+
+# 在YAML文件中引用Schema
+yaml_content = YAMLConfigSchema.get_yaml_header() + """
+name: 数据处理工作流
+description: 处理用户数据
+start_node: input
+end_nodes: [output]
+
+nodes:
+  - id: input
+    type: TaskNode
+    name: 输入处理
+  - id: branch
+    type: BranchControlNode
+    name: 条件分支
+    params:
+      condition_func: "lambda x: x['score'] > 80"
+  - id: output
+    type: TaskNode
+    name: 输出结果
+
+edges:
+  - from: input
+    to: branch
+  - from: branch
+    to: output
+    action: high
+  - from: branch
+    to: output
+    action: low
+"""
 ```
 
 ### 运行测试
@@ -120,14 +150,11 @@ make test
 # 运行架构演示测试
 python -m src.graph.tests.test_architecture
 
-# 运行Schema验证测试
-python -m pytest src/graph/tests/test_schema_validator.py -v
+# 运行图代理测试
+python -m pytest src/graph/tests/test_graph_proxy.py -v
 
-# 运行配置代理测试
-python -m pytest src/graph/tests/test_config_proxy.py -v
-
-# 运行配置验证演示
-python src/graph/examples/schema_validation_demo.py
+# 运行图验证器测试
+python -m pytest src/graph/tests/test_graph_validator.py -v
 ```
 
 ### 基础示例
@@ -329,155 +356,149 @@ executor.register_hook("node_start", on_node_start)
 executor.register_hook("node_complete", on_node_complete)
 ```
 
-### YAML配置系统
+### YAML配置支持
 
-新的配置系统支持Schema验证和双格式配置：
+#### 生成JSON Schema
 
-#### 数组格式配置
+```python
+from src.graph import YAMLConfigSchema
+
+# 生成Schema文件供编辑器使用
+YAMLConfigSchema.save_schema_file("graph-config.schema.json")
+```
+
+#### YAML配置示例
 
 ```yaml
+# yaml-language-server: $schema=./graph-config.schema.json
 name: "数据处理工作流"
-description: "演示数组格式配置"
+description: "演示工作流配置"
 version: "1.0"
+start_node: start
+end_nodes: [end]
+
 nodes:
   - id: start
-    type: SequenceControlNode
-    name: 开始节点
-    description: "工作流入口"
+    type: TaskNode
+    name: 开始处理
+    description: "初始化数据"
     params:
-      process_func: "lambda x: x"
+      timeout: 30
   - id: branch
     type: BranchControlNode
-    name: 条件分支
+    name: 条件判断
     params:
       condition_func: "lambda x: 'high' if x > 10 else 'low'"
   - id: end
     type: TaskNode
-    name: 结束节点
+    name: 结束
+
 edges:
   - from: start
     to: branch
-    action: default
-    weight: 1.0
   - from: branch
     to: end
     action: high
   - from: branch
-    to: end
+    to: end  
     action: low
-start_node: start
-end_nodes: [end]
+
 metadata:
-  author: "开发者"
-  category: "演示"
+  author: "系统"
+  category: "ETL"
 ```
 
-#### 内联格式配置
-
-```yaml
-name: "数据处理工作流"
-description: "演示内联格式配置"
-start_node: start
-end_nodes: [end]
-start:
-  type: SequenceControlNode
-  name: 开始节点
-  description: "工作流入口"
-  params:
-    process_func: "lambda x: x"
-branch:
-  type: BranchControlNode
-  name: 条件分支
-  params:
-    condition_func: "lambda x: 'high' if x > 10 else 'low'"
-end:
-  type: TaskNode
-  name: 结束节点
-edges:
-  - from: start
-    to: branch
-  - from: branch
-    to: end
-    action: high
-  - from: branch
-    to: end
-    action: low
-```
-
-#### 配置验证和加载
+#### 加载YAML配置到图代理
 
 ```python
-from src.graph.schema import validate_graph_config_file
-from src.graph.config_proxy import GraphConfigProxy
+from src.graph import GraphProxy, load_graph_from_yaml
+import yaml
 
-# 验证YAML文件
-valid, errors = validate_graph_config_file("workflow.yaml")
-if not valid:
-    print("配置验证失败:")
-    for error in errors:
-        print(f"  - {error}")
+# 加载YAML配置
+with open("workflow.yaml") as f:
+    config = yaml.safe_load(f)
 
-# 从文件加载配置代理
-proxy = GraphConfigProxy.from_file("workflow.yaml")
+# 转换为图代理
+proxy = GraphProxy.from_dict(config)
 
-# 转换为图对象
-from src.graph.core import Graph
-graph = Graph.from_dict(proxy.to_dict())
+# 或者直接使用配置解析器
+graph = load_graph_from_yaml("workflow.yaml")
 ```
 
 ## API参考
 
-### 配置系统
+### 图操作系统
 
-#### GraphConfigValidator
+#### GraphProxy
 
-YAML配置验证器。
-
-**方法**:
-- `validate(config: dict) -> tuple[bool, list[str]]`: 验证配置字典
-- `detect_format(config: dict) -> str`: 检测配置格式（array/inline）
-
-**便捷函数**:
-- `validate_graph_config(config: dict) -> tuple[bool, list[str]]`: 验证配置
-- `validate_graph_config_file(file_path: str) -> tuple[bool, list[str]]`: 验证文件
-
-#### GraphConfigProxy
-
-图配置代理对象，提供操作图配置的高级API。
+图代理对象，内部维护Graph实例，提供操作图的高级API。
 
 **创建方法**:
-- `create_empty(name: str, description: str = "") -> GraphConfigProxy`: 创建空图
-- `from_file(config_file: str) -> GraphConfigProxy`: 从文件创建
-- `from_dict(config: dict) -> GraphConfigProxy`: 从字典创建
+- `create(name: str, description: str = "") -> GraphProxy`: 创建新图代理
+- `from_dict(data: dict, node_factory: dict = None) -> GraphProxy`: 从字典创建
 
 **节点操作**:
-- `add_node(node_id, node_type, name, description="", params=None, metadata=None) -> bool`: 添加节点
-- `remove_node(node_id: str) -> bool`: 删除节点
-- `update_node(node_id, name=None, description=None, params=None, metadata=None) -> bool`: 更新节点
-- `get_node(node_id: str) -> dict | None`: 获取节点
+- `add_node(node_id, node_type, name=None, **kwargs) -> bool`: 添加节点
+- `remove_node(node_id: str, cleanup_edges=True) -> bool`: 删除节点
+- `update_node(node_id, name=None, **kwargs) -> bool`: 更新节点
+- `get_node(node_id: str) -> BaseNode | None`: 获取节点
 - `has_node(node_id: str) -> bool`: 检查节点是否存在
-- `list_nodes() -> list[dict]`: 列出所有节点
-- `filter_nodes(node_type: str = None) -> list[dict]`: 过滤节点
+- `list_nodes() -> list[tuple[str, BaseNode]]`: 列出所有节点
 
 **边操作**:
-- `add_edge(from_node, to_node, action="default", weight=1.0, metadata=None) -> bool`: 添加边
-- `remove_edge(from_node, to_node, action="default") -> bool`: 删除边
-- `update_edge(from_node, to_node, action="default", new_weight=None, new_metadata=None) -> bool`: 更新边
-- `get_edge(from_node, to_node, action="default") -> dict | None`: 获取边
-- `has_edge(from_node, to_node, action="default") -> bool`: 检查边是否存在
-- `list_edges() -> list[dict]`: 列出所有边
+- `add_edge(from_id, to_id, action="default", weight=1.0, **metadata) -> bool`: 添加边
+- `remove_edge(from_id, to_id, action="default") -> bool`: 删除边
+- `update_edge(from_id, to_id, action="default", weight=None, **metadata) -> bool`: 更新边
+- `get_edge(from_id, to_id, action="default") -> Edge | None`: 获取边
+- `has_edge(from_id, to_id, action="default") -> bool`: 检查边是否存在
+- `list_edges() -> list[Edge]`: 列出所有边
+
+**起始/结束节点**:
+- `set_start_node(node_id: str) -> bool`: 设置起始节点
+- `add_end_node(node_id: str) -> bool`: 添加结束节点
+- `remove_end_node(node_id: str) -> bool`: 移除结束节点
+- `start_node: str | None`: 获取起始节点ID
+- `end_nodes: list[str]`: 获取所有结束节点ID
+
+**图分析**:
+- `get_neighbors(node_id: str) -> list[str]`: 获取节点的邻居
+- `get_predecessors(node_id: str) -> list[str]`: 获取节点的前驱
+- `has_path(from_id, to_id) -> bool`: 检查路径是否存在
+- `find_all_paths(from_id, to_id) -> list[list[str]]`: 查找所有路径
+- `detect_cycles() -> list[list[str]]`: 检测环
+- `topological_sort() -> list[str]`: 拓扑排序
 
 **验证和序列化**:
-- `validate() -> tuple[bool, list[str]]`: 验证配置
+- `validate() -> tuple[bool, list[str]]`: 验证图结构
 - `is_valid() -> bool`: 检查是否有效
 - `to_dict() -> dict`: 导出为字典
-- `to_yaml(indent=2) -> str`: 导出为YAML字符串
-- `save_to_file(file_path: str)`: 保存到文件
+- `to_json() -> str`: 导出为JSON
 
 **高级操作**:
-- `clone() -> GraphConfigProxy`: 克隆代理
-- `merge(other, conflict_strategy="error") -> GraphConfigProxy`: 合并配置
+- `clone() -> GraphProxy`: 克隆图代理
+- `merge(other, prefix="") -> bool`: 合并另一个图
 - `get_statistics() -> dict`: 获取统计信息
+- `add_sequence(node_ids, node_types=None) -> bool`: 添加节点序列
+- `register_node_type(type_name, node_class)`: 注册新节点类型
+
+#### GraphValidator
+
+运行时图验证器。
+
+**方法**:
+- `validate(graph: Graph) -> tuple[bool, list[str]]`: 验证图结构
+- `get_warnings() -> list[str]`: 获取警告信息
+- `validate_node_execution_state(graph) -> tuple[bool, list[str]]`: 验证执行状态
+
+#### YAMLConfigSchema
+
+YAML配置文件的JSON Schema定义。
+
+**方法**:
+- `get_schema() -> dict`: 获取完整的JSON Schema
+- `get_node_param_schema(node_type: str) -> dict`: 获取节点参数Schema
+- `save_schema_file(filepath: str)`: 保存Schema到文件
+- `get_yaml_header() -> str`: 获取YAML文件头部
 
 ### 基础类
 
@@ -613,26 +634,26 @@ async def test_workflow():
 
 查看 `examples/` 目录获取更多示例：
 
-- `schema_validation_demo.py` - Schema验证和配置代理演示
+- `graph_proxy_demo.py` - 图代理API演示
 - `basic_workflow.py` - 基础工作流
 - `ai_workflow.py` - AI增强工作流
 - `parallel_workflow.py` - 并行执行和异常处理
 
-### Schema验证演示
+### 图代理演示
 
-运行完整的配置系统演示：
+运行完整的图代理系统演示：
 
 ```bash
-python src/graph/examples/schema_validation_demo.py
+python src/graph/examples/graph_proxy_demo.py
 ```
 
 该演示包括：
-- Schema验证功能（有效和无效配置）
-- 配置代理基础操作（创建、添加节点和边）
-- 高级操作（节点查询、更新、统计）
-- 序列化和合并功能
-- 错误处理演示
-- 文件验证功能
+- 图代理创建和基础操作
+- 节点和边的增删改查
+- 图结构验证
+- 图分析功能（路径查找、环检测）
+- 序列化和反序列化
+- 批量操作和高级功能
 
 ## 贡献指南
 
