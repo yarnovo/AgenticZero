@@ -9,18 +9,28 @@ from typing import Any
 
 import yaml
 
-from .core import BaseNode, Graph
-from .nodes import (
-    AccumulatorNode,
-    ConditionalNode,
-    DataProcessorNode,
-    DelayNode,
-    ErrorNode,
-    FunctionNode,
-    LoggingNode,
-    RandomChoiceNode,
-    SimpleNode,
+from .atomic_nodes import (
+    BranchNode,
+    ForkNode,
+    JoinNode,
+    MergeNode,
+    SequenceNode,
 )
+from .composite_nodes import (
+    BatchNode,
+    BreakNode,
+    ContinueNode,
+    DoWhileNode,
+    ForEachNode,
+    ForNode,
+    IfElseNode,
+    ParallelNode,
+    RaceNode,
+    SwitchNode,
+    ThrottleNode,
+    WhileNode,
+)
+from .core import BaseNode, Graph
 
 
 class GraphConfigParser:
@@ -28,15 +38,26 @@ class GraphConfigParser:
 
     # 内置节点类型映射
     BUILTIN_NODE_TYPES = {
-        "SimpleNode": SimpleNode,
-        "DataProcessorNode": DataProcessorNode,
-        "ConditionalNode": ConditionalNode,
-        "LoggingNode": LoggingNode,
-        "DelayNode": DelayNode,
-        "ErrorNode": ErrorNode,
-        "RandomChoiceNode": RandomChoiceNode,
-        "AccumulatorNode": AccumulatorNode,
-        "FunctionNode": FunctionNode,
+        # 原子化控制流节点
+        "SequenceNode": SequenceNode,
+        "BranchNode": BranchNode,
+        "MergeNode": MergeNode,
+        "ForkNode": ForkNode,
+        "JoinNode": JoinNode,
+        # 复合节点 - 控制流类
+        "IfElseNode": IfElseNode,
+        "SwitchNode": SwitchNode,
+        "WhileNode": WhileNode,
+        "DoWhileNode": DoWhileNode,
+        "ForNode": ForNode,
+        "ForEachNode": ForEachNode,
+        "BreakNode": BreakNode,
+        "ContinueNode": ContinueNode,
+        # 复合节点 - 并行控制类
+        "ParallelNode": ParallelNode,
+        "RaceNode": RaceNode,
+        "ThrottleNode": ThrottleNode,
+        "BatchNode": BatchNode,
     }
 
     def __init__(self):

@@ -1,7 +1,7 @@
 """
 图执行器实现
 
-负责图的遍历和节点的执行
+负责图的遍历和节点的执行，确保上一个节点的输出作为下一个节点的输入
 """
 
 import asyncio
@@ -24,10 +24,20 @@ class ExecutionContext:
 
     def __init__(self):
         """初始化执行上下文"""
-        self.data: dict[str, Any] = {}  # 共享数据存储
-        self.execution_history: list[dict[str, Any]] = []  # 执行历史
+        # 共享数据存储
+        self.data: dict[str, Any] = {}
+
+        # 执行历史
+        self.execution_history: list[dict[str, Any]] = []
+        self.current_path: list[str] = []  # 当前执行路径
+
+        # 时间信息
         self.start_time = datetime.now()
         self.end_time = None
+
+        # 节点输入输出记录
+        self.node_inputs: dict[str, Any] = {}  # 记录每个节点的输入
+        self.node_outputs: dict[str, Any] = {}  # 记录每个节点的输出
 
     def set(self, key: str, value: Any):
         """设置共享数据"""
@@ -38,18 +48,34 @@ class ExecutionContext:
         return self.data.get(key, default)
 
     def add_execution(
-        self, node_id: str, result: Any, action: str, error: str | None = None
+        self,
+        node_id: str,
+        input_data: Any = None,
+        result: Any = None,
+        action: str = "default",
+        error: str | None = None,
     ):
         """记录节点执行信息"""
         self.execution_history.append(
             {
                 "node_id": node_id,
                 "timestamp": datetime.now(),
+                "input": input_data,
                 "result": result,
                 "action": action,
                 "error": error,
             }
         )
+
+        # 记录输入输出
+        if input_data is not None:
+            self.node_inputs[node_id] = input_data
+        if result is not None:
+            self.node_outputs[node_id] = result
+
+    def get_node_output(self, node_id: str) -> Any:
+        """获取指定节点的输出"""
+        return self.node_outputs.get(node_id)
 
     def finish(self):
         """标记执行结束"""
@@ -67,7 +93,7 @@ class GraphExecutor:
     """
     图执行器
 
-    负责遍历图并执行节点
+    负责遍历图并执行节点，支持原子化控制流节点
     """
 
     def __init__(self, graph: Graph, max_iterations: int = 100):
@@ -88,6 +114,12 @@ class GraphExecutor:
             "on_error": [],  # 出错时
             "on_complete": [],  # 执行完成时
         }
+        # 用于跟踪并行执行和汇聚节点
+        self.active_nodes: set[str] = set()  # 当前活跃的节点
+        self.execution_queue: list[
+            tuple[str, Any]
+        ] = []  # 执行队列：(node_id, input_data)
+        self.join_node_states: dict[str, dict[str, Any]] = {}  # 汇聚节点状态
 
     def add_hook(self, event: str, callback: Callable):
         """
@@ -108,12 +140,15 @@ class GraphExecutor:
             else:
                 callback(**kwargs)
 
-    async def execute(self, start_node_id: str | None = None) -> ExecutionContext:
+    async def execute(
+        self, start_node_id: str | None = None, initial_input: Any = None
+    ) -> ExecutionContext:
         """
-        执行图
+        执行图，支持原子化控制流节点
 
         Args:
             start_node_id: 起始节点ID，如果不指定则使用图的默认起始节点
+            initial_input: 初始输入数据
 
         Returns:
             执行上下文
@@ -131,63 +166,17 @@ class GraphExecutor:
         if not valid:
             logger.warning(f"图验证失败: {errors}")
 
-        self.current_node_id = start_id
+        # 初始化执行队列
+        self.execution_queue = [(start_id, initial_input)]
         iterations = 0
 
         try:
-            while self.current_node_id and iterations < self.max_iterations:
-                node = self.graph.get_node(self.current_node_id)
-                if not node:
-                    raise ValueError(f"节点 {self.current_node_id} 不存在")
+            while self.execution_queue and iterations < self.max_iterations:
+                # 获取下一个要执行的节点
+                node_id, input_data = self.execution_queue.pop(0)
 
-                # 执行前钩子
-                await self._run_hooks("before_node", node=node, context=self.context)
-
-                try:
-                    logger.info(f"执行节点: {self.current_node_id}")
-                    action = await node.run()
-
-                    # 记录执行结果
-                    self.context.add_execution(
-                        node_id=self.current_node_id, result=node.result, action=action
-                    )
-
-                    # 执行后钩子
-                    await self._run_hooks(
-                        "after_node", node=node, action=action, context=self.context
-                    )
-
-                    # 获取下一个节点
-                    next_node_id = self.graph.get_next_node_id(
-                        self.current_node_id, action
-                    )
-
-                    if next_node_id:
-                        logger.info(
-                            f"从 {self.current_node_id} 转移到 {next_node_id}，动作: '{action}'"
-                        )
-                        self.current_node_id = next_node_id
-                    else:
-                        logger.info(
-                            f"没有找到动作 '{action}' 对应的下一个节点，执行结束"
-                        )
-                        self.current_node_id = None
-
-                except Exception as e:
-                    logger.error(f"执行节点 {self.current_node_id} 时出错: {str(e)}")
-                    if self.current_node_id:
-                        self.context.add_execution(
-                            node_id=self.current_node_id,
-                            result=None,
-                            action="error",
-                            error=str(e),
-                        )
-
-                    # 错误钩子
-                    await self._run_hooks(
-                        "on_error", node=node, error=e, context=self.context
-                    )
-                    raise
+                # 执行节点
+                await self._execute_node(node_id, input_data)
 
                 iterations += 1
 
@@ -195,8 +184,6 @@ class GraphExecutor:
                 logger.warning(f"达到最大迭代次数 ({self.max_iterations})")
 
             self.context.finish()
-
-            # 完成钩子
             await self._run_hooks("on_complete", context=self.context)
 
         except Exception:
@@ -205,29 +192,168 @@ class GraphExecutor:
 
         return self.context
 
-    async def execute_parallel_branches(
-        self, start_node_ids: list[str]
-    ) -> dict[str, ExecutionContext | None]:
+    async def _execute_node(self, node_id: str, input_data: Any) -> None:
         """
-        并行执行多个分支
+        执行单个节点
 
         Args:
-            start_node_ids: 起始节点ID列表
-
-        Returns:
-            节点ID到执行上下文的映射
+            node_id: 节点ID
+            input_data: 输入数据（来自上一个节点的输出）
         """
-        tasks = []
-        for node_id in start_node_ids:
-            executor = GraphExecutor(self.graph, self.max_iterations)
-            tasks.append(executor.execute(node_id))
+        node = self.graph.get_node(node_id)
+        if not node:
+            raise ValueError(f"节点 {node_id} 不存在")
 
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        # 记录当前执行路径
+        self.context.current_path.append(node_id)
 
-        return {
-            node_id: result if not isinstance(result, Exception) else None
-            for node_id, result in zip(start_node_ids, results)
-        }
+        # 执行前钩子
+        await self._run_hooks("before_node", node=node, context=self.context)
+
+        try:
+            logger.info(f"执行节点: {node_id}，输入: {input_data}")
+
+            # 执行节点
+            output_data = await self._call_node_with_input(node, input_data)
+
+            # 提取动作
+            action = self._extract_action(output_data)
+
+            # 记录执行结果
+            self.context.add_execution(
+                node_id=node_id,
+                input_data=input_data,
+                result=output_data,
+                action=action,
+            )
+
+            # 执行后钩子
+            await self._run_hooks(
+                "after_node", node=node, action=action, context=self.context
+            )
+
+            # 处理节点输出
+            await self._process_node_output(node_id, output_data, action)
+
+        except Exception as e:
+            logger.error(f"执行节点 {node_id} 时出错: {str(e)}")
+            self.context.add_execution(
+                node_id=node_id,
+                input_data=input_data,
+                result=None,
+                action="error",
+                error=str(e),
+            )
+            await self._run_hooks("on_error", node=node, error=e, context=self.context)
+
+            # 尝试错误处理路径
+            error_next = self.graph.get_next_node_id(node_id, "error")
+            if error_next:
+                self.execution_queue.append(
+                    (error_next, {"error": str(e), "from_node": node_id})
+                )
+            else:
+                raise
+
+        finally:
+            # 从当前路径中移除
+            if self.context.current_path and self.context.current_path[-1] == node_id:
+                self.context.current_path.pop()
+
+    async def _call_node_with_input(self, node: BaseNode, input_data: Any) -> Any:
+        """调用节点并传递输入数据"""
+        # 设置输入数据并运行
+        node._input_data = input_data
+        await node.run()
+        return node.result
+
+    def _extract_action(self, result: Any) -> str:
+        """从结果中提取动作"""
+        if isinstance(result, dict):
+            if "action" in result:
+                return result["action"]
+            elif "__fork__" in result:
+                return "fork"
+            elif "__waiting__" in result:
+                return "waiting"
+        return "default"
+
+    async def _process_node_output(self, node_id: str, output_data: Any, action: str):
+        """
+        处理节点输出，确保输出作为下一个节点的输入
+        """
+        # 处理分叉节点
+        if isinstance(output_data, dict) and output_data.get("__fork__"):
+            # 获取实际数据
+            actual_data = output_data.get("data", output_data)
+
+            # 获取所有下游节点
+            outgoing_edges = self.graph.get_outgoing_edges(node_id)
+            for edge in outgoing_edges:
+                # 将当前节点的输出作为下游节点的输入
+                self.execution_queue.append((edge.to_id, actual_data))
+
+            logger.info(f"分叉节点 {node_id} 激活了 {len(outgoing_edges)} 个下游节点")
+            return
+
+        # 处理汇聚节点的等待状态
+        if isinstance(output_data, dict) and output_data.get("__waiting__"):
+            # 节点还在等待更多输入，暂时不激活下游节点
+            logger.info(f"节点 {node_id} 正在等待更多输入")
+            return
+
+        # 提取实际数据（处理BranchNode的输出格式）
+        if (
+            isinstance(output_data, dict)
+            and "data" in output_data
+            and "action" in output_data
+        ):
+            actual_data = output_data["data"]
+        else:
+            actual_data = output_data
+
+        # 普通节点，根据动作获取下一个节点
+        next_node_id = self.graph.get_next_node_id(node_id, action)
+        if next_node_id:
+            logger.info(f"从 {node_id} 转移到 {next_node_id}，动作: '{action}'")
+
+            # 检查是否是汇聚节点
+            next_node = self.graph.get_node(next_node_id)
+            if hasattr(next_node, "_received_inputs"):  # JoinNode
+                # 处理汇聚节点
+                await self._handle_join_node(next_node_id, node_id, actual_data)
+            else:
+                # 将当前节点的输出作为下一个节点的输入
+                self.execution_queue.append((next_node_id, actual_data))
+
+    async def _handle_join_node(self, join_node_id: str, from_node_id: str, data: Any):
+        """处理汇聚节点的输入"""
+        # 初始化汇聚节点状态
+        if join_node_id not in self.join_node_states:
+            self.join_node_states[join_node_id] = {"inputs": {}, "received_from": set()}
+
+        state = self.join_node_states[join_node_id]
+
+        # 记录输入
+        state["inputs"][from_node_id] = data
+        state["received_from"].add(from_node_id)
+
+        # 获取所有上游节点
+        incoming_edges = self.graph.get_incoming_edges(join_node_id)
+        expected_count = len(incoming_edges)
+
+        # 检查是否收到所有输入
+        if len(state["received_from"]) >= expected_count:
+            # 准备汇聚的输入数据
+            join_input_data = list(state["inputs"].values())
+
+            # 将汇聚的数据作为输入
+            self.execution_queue.append((join_node_id, join_input_data))
+
+            # 清理状态
+            del self.join_node_states[join_node_id]
+
+            logger.info(f"汇聚节点 {join_node_id} 收到所有 {expected_count} 个输入")
 
     def reset(self):
         """重置执行器状态"""
@@ -238,6 +364,9 @@ class GraphExecutor:
         # 重置执行上下文
         self.context = ExecutionContext()
         self.current_node_id = None
+        self.active_nodes.clear()
+        self.execution_queue.clear()
+        self.join_node_states.clear()
 
 
 class ConditionalExecutor(GraphExecutor):
@@ -281,92 +410,28 @@ class ConditionalExecutor(GraphExecutor):
         else:
             return condition_func(node, self.context)
 
-    async def execute(self, start_node_id: str | None = None) -> ExecutionContext:
-        """执行图，支持条件跳过"""
-        start_id = start_node_id or self.graph.start_node_id
-        if not start_id:
-            raise ValueError("未指定起始节点")
+    async def _execute_node(self, node_id: str, input_data: Any) -> None:
+        """执行节点，支持条件跳过"""
+        node = self.graph.get_node(node_id)
+        if not node:
+            raise ValueError(f"节点 {node_id} 不存在")
 
-        self.current_node_id = start_id
-        iterations = 0
+        # 检查节点条件
+        condition_name = node.metadata.get("condition")
+        if condition_name:
+            should_execute = await self.evaluate_condition(condition_name, node)
+            if not should_execute:
+                logger.info(f"由于条件 {condition_name} 不满足，跳过节点 {node_id}")
+                node.status = NodeStatus.SKIPPED
 
-        try:
-            while self.current_node_id and iterations < self.max_iterations:
-                node = self.graph.get_node(self.current_node_id)
-                if not node:
-                    raise ValueError(f"节点 {self.current_node_id} 不存在")
+                # 寻找跳过时的下一个节点
+                skip_next = self.graph.get_next_node_id(node_id, "skip")
+                if not skip_next:
+                    skip_next = self.graph.get_next_node_id(node_id, "default")
 
-                # 检查节点条件
-                condition_name = node.metadata.get("condition")
-                if condition_name:
-                    should_execute = await self.evaluate_condition(condition_name, node)
-                    if not should_execute:
-                        logger.info(
-                            f"由于条件 {condition_name} 不满足，跳过节点 {self.current_node_id}"
-                        )
-                        node.status = NodeStatus.SKIPPED
+                if skip_next:
+                    self.execution_queue.append((skip_next, input_data))
+                return
 
-                        # 寻找跳过时的下一个节点
-                        skip_next = self.graph.get_next_node_id(
-                            self.current_node_id, "skip"
-                        )
-                        if not skip_next:
-                            skip_next = self.graph.get_next_node_id(
-                                self.current_node_id, "default"
-                            )
-
-                        self.current_node_id = skip_next
-                        iterations += 1
-                        continue
-
-                # 正常执行节点
-                await self._run_hooks("before_node", node=node, context=self.context)
-
-                try:
-                    action = await node.run()
-                    self.context.add_execution(
-                        node_id=self.current_node_id, result=node.result, action=action
-                    )
-                    await self._run_hooks(
-                        "after_node", node=node, action=action, context=self.context
-                    )
-
-                    next_node_id = self.graph.get_next_node_id(
-                        self.current_node_id, action
-                    )
-                    self.current_node_id = next_node_id
-
-                except Exception as e:
-                    logger.error(f"执行节点 {self.current_node_id} 时出错: {str(e)}")
-                    if self.current_node_id:
-                        self.context.add_execution(
-                            node_id=self.current_node_id,
-                            result=None,
-                            action="error",
-                            error=str(e),
-                        )
-                    await self._run_hooks(
-                        "on_error", node=node, error=e, context=self.context
-                    )
-
-                    # 尝试错误处理路径
-                    error_next = None
-                    if self.current_node_id:
-                        error_next = self.graph.get_next_node_id(
-                            self.current_node_id, "error"
-                        )
-                    if error_next:
-                        self.current_node_id = error_next
-                    else:
-                        raise
-
-                iterations += 1
-
-            self.context.finish()
-            await self._run_hooks("on_complete", context=self.context)
-
-        except Exception:
-            self.context.finish()
-            raise
-
-        return self.context
+        # 正常执行节点
+        await super()._execute_node(node_id, input_data)

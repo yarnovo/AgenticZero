@@ -1,6 +1,6 @@
 # 图执行框架
 
-这是一个基于 YAML 配置的图执行框架，支持创建复杂的工作流和数据处理管道。参考了 PocketFlow 的设计理念，提供了灵活的节点类型和执行模式。
+这是一个基于原子化控制流节点的图执行框架，支持创建复杂的工作流和数据处理管道。
 
 ## 核心概念
 
@@ -16,366 +16,228 @@
 - 条件边：根据节点返回的动作选择不同路径
 
 ### 3. 图 (Graph)
-图是节点和边的集合，定义了完整的工作流。
+图是节点和边的集合，定义了完整的工作流。图是单入口单出口的设计。
 
-## 内置节点类型
+## 原子化控制流节点
+
+框架提供了5种基础的原子化控制流节点，可以组合实现复杂的控制流模式：
+
+### 1. SequenceNode（顺序节点）
+- **特征**：一个输入，一个输出
+- **用途**：直接执行，无条件传递
+- **示例**：
+```python
+node = SequenceNode("process", "处理节点", lambda x: x * 2)
+```
+
+### 2. BranchNode（分支节点）
+- **特征**：一个输入，多个输出
+- **用途**：根据条件选择一个输出路径
+- **示例**：
+```python
+branch = BranchNode("check", "条件检查", 
+    lambda x: "high" if x > 50 else "low")
+```
+
+### 3. MergeNode（合并节点）
+- **特征**：多个输入，一个输出
+- **用途**：任意一个输入到达即可继续
+- **示例**：
+```python
+merge = MergeNode("merge", "合并点")
+```
+
+### 4. ForkNode（分叉节点）
+- **特征**：一个输入，多个输出
+- **用途**：同时激活所有输出路径（并行开始）
+- **示例**：
+```python
+fork = ForkNode("fork", "分叉点")
+```
+
+### 5. JoinNode（汇聚节点）
+- **特征**：多个输入，一个输出
+- **用途**：所有输入都到达才继续（并行结束）
+- **示例**：
+```python
+join = JoinNode("join", "汇聚点", 
+    lambda results: sum(results), expected_inputs=3)
+```
+
+## 高级控制流模式
+
+通过组合原子节点，可以实现：
+
+### 1. 循环模式
+- **组合**：分支节点 + 合并节点（形成回路）
+- **示例**：计算累加和、迭代处理
+
+### 2. 条件执行
+- **组合**：分支节点 + 合并节点
+- **示例**：权限检查、条件路由
+
+### 3. 并行执行
+- **组合**：分叉节点 + 汇聚节点
+- **示例**：并行数据处理、多任务执行
+
+### 4. 异常处理
+- **组合**：分支节点的特殊应用
+- **示例**：错误恢复、重试机制
+
+## 使用方式
+
+### 1. 程序化创建
+
+```python
+from src.graph import Graph, GraphExecutor, SequenceNode, Edge
+
+# 创建图
+graph = Graph()
+
+# 添加节点
+node1 = SequenceNode("input", "输入节点")
+node2 = SequenceNode("process", "处理节点", lambda x: x * 2)
+graph.add_node(node1)
+graph.add_node(node2)
+
+# 连接节点
+graph.add_edge(Edge("input", "process"))
+
+# 设置起始节点
+graph.set_start_node("input")
+
+# 执行
+executor = GraphExecutor(graph)
+context = await executor.execute()
+```
+
+### 2. YAML配置方式
+
+```yaml
+name: "示例工作流"
+start_node: "input"
+
+nodes:
+  - id: input
+    type: SequenceNode
+    name: "输入节点"
+    
+  - id: branch
+    type: BranchNode
+    name: "条件分支"
+    
+  - id: process_high
+    type: SequenceNode
+    name: "高值处理"
+    
+  - id: process_low
+    type: SequenceNode
+    name: "低值处理"
+    
+  - id: merge
+    type: MergeNode
+    name: "合并节点"
+
+edges:
+  - source: input
+    target: branch
+    
+  - source: branch
+    target: process_high
+    action: "high"
+    
+  - source: branch
+    target: process_low
+    action: "low"
+    
+  - source: process_high
+    target: merge
+    
+  - source: process_low
+    target: merge
+```
+
+## 功能节点
+
+除了原子化控制流节点，框架还提供了多种功能节点：
 
 ### SimpleNode
-最基础的节点类型，用于简单的消息传递或占位。
-
-```yaml
-- id: my_node
-  type: SimpleNode
-  params:
-    message: "Hello World"
-```
+基础节点，用于简单的消息传递。
 
 ### DataProcessorNode
-数据处理节点，支持多种数据转换操作。
-
-```yaml
-- id: processor
-  type: DataProcessorNode
-  params:
-    process_type: "uppercase"  # 可选: uppercase, lowercase, reverse
-```
+数据处理节点，支持各种数据转换操作。
 
 ### ConditionalNode
-条件判断节点，根据条件返回不同的动作。
-
-```yaml
-- id: condition
-  type: ConditionalNode
-  params:
-    condition_type: "value_check"
-    threshold: 50
-```
+条件判断节点（旧版本，建议使用BranchNode）。
 
 ### LoggingNode
 日志记录节点，用于调试和监控。
 
-```yaml
-- id: logger
-  type: LoggingNode
-  params:
-    level: "info"  # 可选: debug, info, warning, error
-    message: "Custom log message"
-```
-
 ### DelayNode
-延迟节点，用于模拟耗时操作或控制执行节奏。
-
-```yaml
-- id: delay
-  type: DelayNode
-  params:
-    delay: 2.0  # 延迟秒数
-    message: "Waiting..."
-```
+延迟节点，用于控制执行节奏。
 
 ### ErrorNode
-错误处理节点，用于测试错误处理流程。
-
-```yaml
-- id: error
-  type: ErrorNode
-  params:
-    error_message: "Something went wrong"
-    recover: true  # 是否可恢复
-```
+错误处理节点，用于测试错误流程。
 
 ### RandomChoiceNode
-随机选择节点，用于模拟随机行为。
-
-```yaml
-- id: random
-  type: RandomChoiceNode
-  params:
-    choices: ["option1", "option2", "option3"]
-    weights: [0.5, 0.3, 0.2]  # 可选，各选项的权重
-```
+随机选择节点，模拟随机行为。
 
 ### AccumulatorNode
-累加器节点，用于收集多个输入。
-
-```yaml
-- id: accumulator
-  type: AccumulatorNode
-  params:
-    wait_for: 3  # 等待的输入数量
-```
+累加器节点，收集多个输入。
 
 ### FunctionNode
-函数节点，调用自定义 Python 函数。
+函数节点，执行自定义Python函数。
 
-```yaml
-- id: custom_func
-  type: FunctionNode
-  params:
-    function: "module.path:function_name"
-```
+## 执行器特性
 
-## YAML 配置格式
+### GraphExecutor
+- 支持异步执行
+- 自动处理并行节点
+- 提供执行上下文管理
+- 支持钩子函数（before_node, after_node, on_error, on_complete）
+- 防止无限循环（max_iterations）
 
-### 基本结构
+### ExecutionContext
+- 维护共享数据
+- 记录执行历史
+- 提供执行统计
 
-```yaml
-# 图的名称
-name: "我的工作流"
+## 示例
 
-# 自定义节点类型（可选）
-custom_nodes:
-  MyCustomNode: "my_module.nodes:MyCustomNode"
+查看 `examples/` 目录下的示例：
 
-# 节点定义
-nodes:
-  - id: node1          # 唯一标识符
-    type: SimpleNode   # 节点类型
-    name: "节点1"      # 显示名称（可选）
-    params:            # 节点参数
-      key: value
-    metadata:          # 元数据（可选）
-      author: "me"
-
-# 边定义
-edges:
-  - from: node1        # 起始节点
-    to: node2          # 目标节点
-    action: "default"  # 动作标识（可选）
-    weight: 1.0        # 权重（可选）
-
-# 起始节点
-start_node: node1
-
-# 结束节点（可多个）
-end_nodes: [node3, node4]
-```
-
-### 条件分支
-
-```yaml
-edges:
-  # 条件节点根据返回的动作选择路径
-  - from: condition_node
-    to: success_node
-    action: "success"
-    
-  - from: condition_node
-    to: failure_node
-    action: "failure"
-```
-
-### 并行执行
-
-```yaml
-nodes:
-  - id: splitter
-    type: SimpleNode
-    
-  - id: parallel1
-    type: DataProcessorNode
-    
-  - id: parallel2
-    type: DataProcessorNode
-    
-  - id: collector
-    type: AccumulatorNode
-    params:
-      wait_for: 2
-
-edges:
-  # 分发到多个并行任务
-  - from: splitter
-    to: parallel1
-    action: "task1"
-    
-  - from: splitter
-    to: parallel2
-    action: "task2"
-    
-  # 收集结果
-  - from: parallel1
-    to: collector
-    
-  - from: parallel2
-    to: collector
-```
-
-## 使用示例
-
-### 1. 加载和执行图
-
-```python
-from src.graph import load_graph_from_yaml, GraphExecutor
-
-# 从 YAML 文件加载图
-graph = load_graph_from_yaml("path/to/config.yaml")
-
-# 创建执行器
-executor = GraphExecutor(graph)
-
-# 执行图
-result = await executor.execute({"input": "data"})
-```
-
-### 2. 程序化创建图
-
-```python
-from src.graph import Graph, SimpleNode, DataProcessorNode
-
-# 创建图
-graph = Graph("my_graph")
-
-# 创建节点
-start = SimpleNode("start", "开始")
-process = DataProcessorNode("process", "处理")
-end = SimpleNode("end", "结束")
-
-# 添加节点到图
-graph.add_node("start", start)
-graph.add_node("process", process)
-graph.add_node("end", end)
-
-# 添加边
-graph.add_edge("start", "process")
-graph.add_edge("process", "end")
-
-# 设置起始和结束节点
-graph.set_start("start")
-graph.add_end("end")
-```
-
-### 3. 使用链式语法
-
-```python
-from src.graph import SimpleNode, DataProcessorNode
-
-# 使用 >> 操作符链接节点
-start = SimpleNode("start")
-process = DataProcessorNode("process")
-end = SimpleNode("end")
-
-# 创建流程
-start >> process >> end
-
-# 使用 - 操作符创建条件边
-condition = ConditionalNode("check")
-success = SimpleNode("success")
-failure = SimpleNode("failure")
-
-condition - "true" >> success
-condition - "false" >> failure
-```
-
-## 自定义节点
-
-创建自定义节点需要继承 `BaseNode` 类：
-
-```python
-from src.graph import BaseNode
-
-class MyCustomNode(BaseNode):
-    def __init__(self, node_id: str, name: str = None, **kwargs):
-        super().__init__(node_id, name, **kwargs)
-        self.my_param = kwargs.get("my_param", "default")
-    
-    async def prep(self) -> None:
-        """准备阶段"""
-        print(f"Preparing {self.name}")
-    
-    async def exec(self) -> Any:
-        """执行主逻辑"""
-        # 执行自定义逻辑
-        result = self.my_param.upper()
-        return result
-    
-    async def post(self) -> str:
-        """决定下一步动作"""
-        if self.result:
-            return "success"
-        else:
-            return "failure"
-```
-
-然后在 YAML 中注册和使用：
-
-```yaml
-custom_nodes:
-  MyCustomNode: "my_module:MyCustomNode"
-
-nodes:
-  - id: custom
-    type: MyCustomNode
-    params:
-      my_param: "hello"
-```
-
-## 执行上下文
-
-执行器维护一个共享的上下文，节点可以通过它传递数据：
-
-```python
-class DataNode(BaseNode):
-    async def exec(self) -> Any:
-        # 从上下文读取数据
-        input_data = self.context.get("input_data")
-        
-        # 处理数据
-        processed = process(input_data)
-        
-        # 写入上下文
-        self.context["processed_data"] = processed
-        
-        return processed
-```
-
-## 错误处理
-
-框架支持多种错误处理策略：
-
-1. **节点级重试**：节点可以定义重试逻辑
-2. **错误恢复**：通过 ErrorNode 实现错误恢复流程
-3. **全局错误处理**：执行器级别的错误处理
+1. **atomic_nodes_basic.py** - 基础原子节点使用示例
+2. **atomic_nodes_advanced.py** - 高级控制流模式示例
+3. **simple_graph_example.py** - 简单图构建示例
+4. **run_graph.py** - YAML配置执行示例
 
 ## 最佳实践
 
-1. **保持节点简单**：每个节点应该只做一件事
-2. **使用有意义的 ID**：节点 ID 应该描述其功能
-3. **合理使用条件分支**：避免过度复杂的分支逻辑
-4. **错误处理**：始终考虑错误情况和恢复策略
-5. **文档化**：为自定义节点添加详细的文档字符串
+1. **单一职责**：每个节点应该只负责一个具体的任务
+2. **错误处理**：使用分支节点实现错误处理和恢复
+3. **并行优化**：合理使用分叉和汇聚节点提高性能
+4. **循环控制**：使用分支节点控制循环退出条件，避免无限循环
+5. **数据传递**：通过执行上下文在节点间传递数据
 
-## 调试和监控
+## 扩展
 
-使用 LoggingNode 添加调试信息：
-
-```yaml
-nodes:
-  - id: debug
-    type: LoggingNode
-    params:
-      level: "debug"
-      message: "Current state: {context}"
-```
-
-或者使用执行器的事件监听：
+可以通过继承 `BaseNode` 创建自定义节点类型：
 
 ```python
-executor = GraphExecutor(graph)
-executor.on_node_start = lambda node: print(f"Starting {node.name}")
-executor.on_node_complete = lambda node: print(f"Completed {node.name}")
+from src.graph.core import BaseNode
+
+class CustomNode(BaseNode):
+    def __init__(self, node_id: str, name: str = None):
+        super().__init__(node_id, name)
+        
+    def exec(self, input_data):
+        # 实现自定义逻辑
+        return processed_data
 ```
 
-## 示例配置
+## 注意事项
 
-查看 `examples/graph_configs/` 目录下的示例配置：
-
-- `simple_flow.yaml`: 简单的顺序流程
-- `conditional_flow.yaml`: 条件分支示例
-- `parallel_flow.yaml`: 并行执行示例
-- `error_handling_flow.yaml`: 错误处理示例
-- `function_flow.yaml`: 函数节点示例
-
-## 参考资料
-
-本项目参考了 [PocketFlow](https://github.com/pocketflow/pocketflow) 的设计理念，提供了更简洁的 YAML 配置方式和更丰富的内置节点类型。
+1. 图必须是有向无环图（除非特意创建循环）
+2. 每个图必须有一个起始节点
+3. 节点ID必须唯一
+4. 执行器有最大迭代次数限制，防止无限循环

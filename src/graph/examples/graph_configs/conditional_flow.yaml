@@ -1,4 +1,4 @@
-# 条件分支流程图配置示例
+# 条件分支流程图配置示例（使用原子节点）
 name: "条件分支流程"
 
 nodes:
@@ -9,9 +9,11 @@ nodes:
       message: "评估数值"
 
   - id: evaluate
-    type: ConditionalNode
+    type: BranchNode
     name: "条件判断"
     params:
+      # BranchNode 需要一个返回动作字符串的函数
+      # 这里演示如何通过参数配置
       condition_type: "value_check"
       threshold: 50
 
@@ -30,7 +32,7 @@ nodes:
       message: "数值小于等于阈值"
 
   - id: merge
-    type: SimpleNode
+    type: MergeNode
     name: "合并节点"
 
   - id: end
@@ -43,11 +45,11 @@ edges:
     
   - from: evaluate
     to: high_path
-    action: "true"
+    action: "high"
     
   - from: evaluate
     to: low_path
-    action: "false"
+    action: "low"
     
   - from: high_path
     to: merge

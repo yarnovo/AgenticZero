@@ -1,4 +1,4 @@
-# 错误处理流程图配置示例
+# 错误处理流程图配置示例（使用原子节点）
 name: "错误处理流程"
 
 nodes:
@@ -7,11 +7,12 @@ nodes:
     name: "开始"
 
   - id: risky_operation
-    type: RandomChoiceNode
+    type: BranchNode
     name: "风险操作"
     params:
-      choices: ["success", "error"]
-      weights: [0.7, 0.3]  # 70%成功，30%失败
+      # 使用BranchNode模拟随机选择
+      # 70%成功，30%失败
+      success_rate: 0.7
 
   - id: success_handler
     type: LoggingNode
@@ -28,10 +29,10 @@ nodes:
       recover: true  # 允许恢复
 
   - id: retry_decision
-    type: ConditionalNode
+    type: BranchNode
     name: "重试决策"
     params:
-      condition_type: "retry_check"
+      # 检查是否应该重试
       max_retries: 3
 
   - id: final_error

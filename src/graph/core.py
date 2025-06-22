@@ -45,6 +45,7 @@ class BaseNode(ABC):
         self.result = None
         self.error = None
         self.metadata = kwargs
+        self._input_data = None  # 由执行器设置的输入数据
 
     @abstractmethod
     async def prep(self) -> None:
@@ -85,6 +86,7 @@ class BaseNode(ABC):
         self.status = NodeStatus.PENDING
         self.result = None
         self.error = None
+        self._input_data = None
 
     def __rshift__(self, other: "BaseNode") -> "BaseNode":
         """
@@ -187,37 +189,72 @@ class Graph:
         self.start_node_id: str | None = None
         self.end_node_ids: set[str] = set()
 
-    def add_node(self, node_id: str, node: BaseNode) -> None:
-        """添加节点到图中"""
-        if node_id in self.nodes:
-            raise ValueError(f"节点 {node_id} 已经存在")
-        self.nodes[node_id] = node
-        if node_id not in self.edges:
-            self.edges[node_id] = {}
+    def add_node(self, node_id: str | BaseNode, node: BaseNode | None = None) -> None:
+        """添加节点到图中
+
+        Args:
+            node_id: 节点ID或节点对象
+            node: 节点对象（如果第一个参数是ID）
+        """
+        # 支持两种调用方式
+        if isinstance(node_id, BaseNode):
+            # 方式1: add_node(node)
+            node_obj = node_id
+            node_id_str = node_obj.node_id
+        else:
+            # 方式2: add_node(node_id, node)
+            if node is None:
+                raise ValueError("必须提供节点对象")
+            node_id_str = node_id
+            node_obj = node
+
+        if node_id_str in self.nodes:
+            raise ValueError(f"节点 {node_id_str} 已经存在")
+        self.nodes[node_id_str] = node_obj
+        if node_id_str not in self.edges:
+            self.edges[node_id_str] = {}
 
     def add_edge(
-        self, from_id: str, to_id: str, action: str = "default", weight: float = 1.0
+        self,
+        from_id: str | Edge,
+        to_id: str | None = None,
+        action: str = "default",
+        weight: float = 1.0,
     ) -> None:
         """
         添加边到图中
 
         Args:
-            from_id: 起始节点ID
-            to_id: 目标节点ID
+            from_id: 起始节点ID或Edge对象
+            to_id: 目标节点ID（如果第一个参数是ID）
             action: 动作标识
             weight: 边的权重
         """
-        if from_id not in self.nodes:
-            raise ValueError(f"起始节点 {from_id} 不存在")
-        if to_id not in self.nodes:
-            raise ValueError(f"目标节点 {to_id} 不存在")
+        # 支持两种调用方式
+        if isinstance(from_id, Edge):
+            # 方式1: add_edge(edge)
+            edge = from_id
+            from_id_str = edge.from_id
+            to_id_str = edge.to_id
+            action = edge.action
+        else:
+            # 方式2: add_edge(from_id, to_id, action, weight)
+            if to_id is None:
+                raise ValueError("必须提供目标节点ID")
+            from_id_str = from_id
+            to_id_str = to_id
+            edge = Edge(from_id_str, to_id_str, action, weight)
 
-        edge = Edge(from_id, to_id, action, weight)
-        self.edges[from_id][action] = edge
+        if from_id_str not in self.nodes:
+            raise ValueError(f"起始节点 {from_id_str} 不存在")
+        if to_id_str not in self.nodes:
+            raise ValueError(f"目标节点 {to_id_str} 不存在")
+
+        self.edges[from_id_str][action] = edge
 
         # 确保目标节点在边字典中
-        if to_id not in self.edges:
-            self.edges[to_id] = {}
+        if to_id_str not in self.edges:
+            self.edges[to_id_str] = {}
 
     def remove_node(self, node_id: str) -> None:
         """从图中移除节点及其相关的边"""
@@ -251,6 +288,10 @@ class Graph:
         if node_id not in self.nodes:
             raise ValueError(f"节点 {node_id} 不存在")
         self.start_node_id = node_id
+
+    def set_start_node(self, node_id: str) -> None:
+        """设置起始节点（别名方法）"""
+        self.set_start(node_id)
 
     def add_end(self, node_id: str) -> None:
         """添加结束节点"""

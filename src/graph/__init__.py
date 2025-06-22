@@ -7,22 +7,33 @@
 - 条件分支和循环
 - 数据在节点间的传递
 - 基于 YAML 的配置解析
+- 原子化控制流节点（顺序、分支、合并、分叉、汇聚）
 """
 
+from .atomic_nodes import (
+    BranchNode,
+    ForkNode,
+    JoinNode,
+    MergeNode,
+    SequenceNode,
+)
+from .composite_nodes import (
+    BatchNode,
+    BreakNode,
+    ContinueNode,
+    DoWhileNode,
+    ForEachNode,
+    ForNode,
+    IfElseNode,
+    ParallelNode,
+    RaceNode,
+    SwitchNode,
+    ThrottleNode,
+    WhileNode,
+)
 from .config_parser import GraphConfigParser, load_graph_from_dict, load_graph_from_yaml
 from .core import BaseNode, Edge, Graph, NodeStatus
 from .executor import ExecutionContext, GraphExecutor
-from .nodes import (
-    AccumulatorNode,
-    ConditionalNode,
-    DataProcessorNode,
-    DelayNode,
-    ErrorNode,
-    FunctionNode,
-    LoggingNode,
-    RandomChoiceNode,
-    SimpleNode,
-)
 
 __all__ = [
     # 核心类
@@ -33,16 +44,25 @@ __all__ = [
     # 执行器
     "GraphExecutor",
     "ExecutionContext",
-    # 节点类型
-    "SimpleNode",
-    "DataProcessorNode",
-    "ConditionalNode",
-    "LoggingNode",
-    "DelayNode",
-    "ErrorNode",
-    "RandomChoiceNode",
-    "AccumulatorNode",
-    "FunctionNode",
+    # 原子化控制流节点
+    "SequenceNode",
+    "BranchNode",
+    "MergeNode",
+    "ForkNode",
+    "JoinNode",
+    # 复合节点
+    "IfElseNode",
+    "SwitchNode",
+    "WhileNode",
+    "DoWhileNode",
+    "ForNode",
+    "ForEachNode",
+    "BreakNode",
+    "ContinueNode",
+    "ParallelNode",
+    "RaceNode",
+    "ThrottleNode",
+    "BatchNode",
     # 配置解析
     "GraphConfigParser",
     "load_graph_from_yaml",
