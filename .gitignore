@@ -1,6 +1,7 @@
 modelcontextprotocol/
 mcp-agent/
 PocketFlow/
+temporal/
 
 # Python
 __pycache__/

@@ -469,4 +469,3 @@ class ResumableExecutor(GraphExecutor):
             await hook(*args, **kwargs)
         else:
             hook(*args, **kwargs)
-

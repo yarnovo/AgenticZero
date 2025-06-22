@@ -3,8 +3,8 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 
-class MCPServerConfig(BaseModel):
-    """单个 MCP 服务器的配置。"""
+class MCPServerSettings(BaseModel):
+    """单个 MCP 服务器的设置。"""
 
     name: str
     command: str
@@ -15,8 +15,8 @@ class MCPServerConfig(BaseModel):
         extra = "allow"
 
 
-class LLMConfig(BaseModel):
-    """LLM 提供商配置。"""
+class LLMSettings(BaseModel):
+    """LLM 提供商设置。"""
 
     provider: str = "openai"  # openai, anthropic 等
     api_key: str
@@ -28,13 +28,13 @@ class LLMConfig(BaseModel):
         extra = "allow"
 
 
-class AgentConfig(BaseModel):
-    """最小化智能体配置。"""
+class AgentSettings(BaseModel):
+    """智能体设置。"""
 
-    name: str = "minimal_agent"
+    name: str = "agent"
     instruction: str = "你是一个可以访问 MCP 工具的有用助手。"
-    mcp_servers: dict[str, MCPServerConfig] = Field(default_factory=dict)
-    llm_config: LLMConfig
+    mcp_servers: dict[str, MCPServerSettings] = Field(default_factory=dict)
+    llm_settings: LLMSettings
     max_iterations: int = 10
     debug: bool = False
 
@@ -42,9 +42,9 @@ class AgentConfig(BaseModel):
         extra = "allow"
 
     @classmethod
-    def from_dict(cls, config_dict: dict[str, Any]) -> "AgentConfig":
-        """从字典创建配置。"""
-        return cls(**config_dict)
+    def from_dict(cls, settings_dict: dict[str, Any]) -> "AgentSettings":
+        """从字典创建设置。"""
+        return cls(**settings_dict)
 
     def add_mcp_server(
         self,
@@ -52,8 +52,8 @@ class AgentConfig(BaseModel):
         command: str,
         args: list[str] | None = None,
     ) -> None:
-        """添加 MCP 服务器配置。"""
-        self.mcp_servers[name] = MCPServerConfig(
+        """添加 MCP 服务器设置。"""
+        self.mcp_servers[name] = MCPServerSettings(
             name=name,
             command=command,
             args=args or [],
