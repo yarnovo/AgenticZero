@@ -9,38 +9,39 @@ from typing import Any
 
 import yaml
 
+from .ai_control_nodes import (
+    AIPlanner,
+    AIRouter,
+)
+from .ai_task_nodes import (
+    AIAnalyzer,
+    AIEvaluator,
+    AIGenerator,
+)
+
 # 导入新的节点类型
 from .atomic_control_nodes import (
-    SequenceControlNode,
     BranchControlNode,
-    MergeControlNode,
     ForkControlNode,
     JoinControlNode,
-)
-from .exception_nodes import (
-    TryCatchNode,
-    RetryNode,
-    TimeoutNode,
-    CircuitBreakerNode,
+    MergeControlNode,
+    SequenceControlNode,
 )
 from .composite_control_nodes import (
     CompositeControlNode,
 )
-from .ai_control_nodes import (
-    AIRouter,
-    AIPlanner,
-)
-from .ai_task_nodes import (
-    AIAnalyzer,
-    AIGenerator,
-    AIEvaluator,
+from .core import BaseNode, Graph
+from .exception_nodes import (
+    CircuitBreakerNode,
+    RetryNode,
+    TimeoutNode,
+    TryCatchNode,
 )
 from .node_types import (
-    TaskNode,
     ControlNode,
     ExceptionNode,
+    TaskNode,
 )
-from .core import BaseNode, Graph
 
 
 class GraphConfigParser:
@@ -52,32 +53,26 @@ class GraphConfigParser:
         "TaskNode": TaskNode,
         "ControlNode": ControlNode,
         "ExceptionNode": ExceptionNode,
-        
         # 原子控制节点
         "SequenceControlNode": SequenceControlNode,
         "BranchControlNode": BranchControlNode,
         "MergeControlNode": MergeControlNode,
         "ForkControlNode": ForkControlNode,
         "JoinControlNode": JoinControlNode,
-        
         # 异常处理节点
         "TryCatchNode": TryCatchNode,
         "RetryNode": RetryNode,
         "TimeoutNode": TimeoutNode,
         "CircuitBreakerNode": CircuitBreakerNode,
-        
         # 复合控制节点
         "CompositeControlNode": CompositeControlNode,
-        
         # AI控制节点
         "AIRouter": AIRouter,
         "AIPlanner": AIPlanner,
-        
         # AI任务节点
         "AIAnalyzer": AIAnalyzer,
         "AIGenerator": AIGenerator,
         "AIEvaluator": AIEvaluator,
-        
         # 保留原有名称的兼容性映射
         "SequenceNode": SequenceControlNode,
         "BranchNode": BranchControlNode,

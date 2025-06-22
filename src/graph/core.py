@@ -42,10 +42,10 @@ class BaseNode(ABC):
         self.node_id = node_id
         self.name = name or node_id
         self.status = NodeStatus.PENDING
-        self.result = None
-        self.error = None
+        self.result: Any = None
+        self.error: str | None = None
         self.metadata = kwargs
-        self._input_data = None  # 由执行器设置的输入数据
+        self._input_data: Any = None  # 由执行器设置的输入数据
 
     @abstractmethod
     async def prep(self) -> None:

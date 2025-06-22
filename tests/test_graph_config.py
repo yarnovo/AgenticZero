@@ -72,13 +72,22 @@ class TestGraphConfig:
 async def test_conditional_execution():
     """测试条件执行"""
     # 使用新的节点类型
-    from src.graph import BranchControlNode, Graph, GraphExecutor, MergeControlNode, SequenceControlNode, TaskNode
+    from src.graph import (
+        BranchControlNode,
+        Graph,
+        GraphExecutor,
+        MergeControlNode,
+        SequenceControlNode,
+        TaskNode,
+    )
 
     graph = Graph("条件测试")
 
     # 创建节点
     start = SequenceControlNode("start", "开始", lambda x: x)
-    check = BranchControlNode("check", "条件检查", lambda x: "true" if x > 50 else "false")
+    check = BranchControlNode(
+        "check", "条件检查", lambda x: "true" if x > 50 else "false"
+    )
     true_path = TaskNode("true_path", "真路径", lambda x: f"大值: {x}")
     false_path = TaskNode("false_path", "假路径", lambda x: f"小值: {x}")
     end = MergeControlNode("end", "结束")

@@ -33,11 +33,16 @@ class ExecutionContext:
 
         # 时间信息
         self.start_time = datetime.now()
-        self.end_time = None
+        self.end_time: datetime | None = None
 
         # 节点输入输出记录
         self.node_inputs: dict[str, Any] = {}  # 记录每个节点的输入
         self.node_outputs: dict[str, Any] = {}  # 记录每个节点的输出
+
+        # 为了与 ResumableExecutor 兼容
+        self.current_node: str | None = None
+        self.visited_nodes: set[str] = set()
+        self.graph_input: Any = None
 
     def set(self, key: str, value: Any):
         """设置共享数据"""
@@ -87,21 +92,24 @@ class ExecutionContext:
         if self.end_time:
             return (self.end_time - self.start_time).total_seconds()
         return (datetime.now() - self.start_time).total_seconds()
-    
+
     @property
     def graph_output(self):
         """获取图的最终输出
-        
+
         返回最后执行的节点的输出
         """
         if not self.execution_history:
             return None
-            
+
         # 找到最后一个成功执行的节点
         for exec_record in reversed(self.execution_history):
-            if exec_record.get("result") is not None and exec_record.get("error") is None:
+            if (
+                exec_record.get("result") is not None
+                and exec_record.get("error") is None
+            ):
                 return exec_record["result"]
-                
+
         return None
 
 
