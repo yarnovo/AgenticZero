@@ -1,0 +1,68 @@
+name: "分支合并节点演示"
+description: "展示BranchNode和MergeNode的使用方法 - 条件分支处理"
+
+start_node: "input"
+end_nodes: ["output"]
+
+input:
+  type: SequenceNode
+  name: "输入节点"
+  params:
+    process_func: "lambda x: x"
+
+branch:
+  type: BranchNode
+  name: "条件分支"
+  params:
+    condition_func: "lambda x: 'high' if x > 50 else 'low'"
+
+high_path:
+  type: SequenceNode
+  name: "高值处理"
+  params:
+    process_func: "lambda x: x * 0.9"
+
+low_path:
+  type: SequenceNode
+  name: "低值处理"
+  params:
+    process_func: "lambda x: x * 1.5"
+
+merge:
+  type: MergeNode
+  name: "合并节点"
+
+output:
+  type: SequenceNode
+  name: "输出节点"
+  params:
+    process_func: "lambda x: f'最终结果: {x}'"
+
+edges:
+  - from: input
+    to: branch
+    
+  - from: branch
+    to: high_path
+    action: "high"
+    
+  - from: branch
+    to: low_path
+    action: "low"
+    
+  - from: high_path
+    to: merge
+    
+  - from: low_path
+    to: merge
+    
+  - from: merge
+    to: output
+
+metadata:
+  version: "1.0"
+  category: "原子节点"
+  example_input_high: 75
+  expected_output_high: "最终结果: 67.5"
+  example_input_low: 25
+  expected_output_low: "最终结果: 37.5"

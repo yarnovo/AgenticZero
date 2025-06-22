@@ -1,0 +1,50 @@
+name: "AI自动规划演示"
+description: "展示自动任务规划和执行"
+
+start_node: "task_input"
+end_nodes: ["evaluation"]
+
+task_input:
+  type: SequenceNode
+  name: "任务输入"
+  params:
+    process_func: "lambda x: {'task': 'Build a web application', 'requirements': ['user auth', 'database', 'API']}"
+
+auto_planner:
+  type: AutoPlannerNode
+  name: "自动规划器"
+  params:
+    max_steps: 8
+    plan_validator: "lambda plan: len(plan) >= 3"
+
+task_decomposer:
+  type: TaskDecomposerNode
+  name: "任务分解器"
+  params:
+    decomposition_strategy: "hierarchical"
+    max_depth: 3
+
+plan_executor:
+  type: PlanExecutorNode
+  name: "计划执行器"
+  params:
+    execution_strategy: "adaptive"
+    error_handler: "lambda data, error: {'status': 'error_handled', 'error': str(error), 'recovery': 'retry'}"
+
+evaluation:
+  type: EvaluatorNode
+  name: "执行评估"
+  params:
+    evaluation_criteria: ["completeness", "efficiency", "quality", "reliability"]
+    scoring_func: "lambda x: sum([0.8, 0.9, 0.85, 0.75]) / 4"
+
+# 边连接
+edges:
+  - from: "task_input"
+    to: "auto_planner"
+  - from: "auto_planner"
+    to: "task_decomposer"
+  - from: "task_decomposer"
+    to: "plan_executor"
+  - from: "plan_executor"
+    to: "evaluation"

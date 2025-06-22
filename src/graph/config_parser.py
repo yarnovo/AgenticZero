@@ -9,26 +9,36 @@ from typing import Any
 
 import yaml
 
-from .atomic_nodes import (
-    BranchNode,
-    ForkNode,
-    JoinNode,
-    MergeNode,
-    SequenceNode,
+# 导入新的节点类型
+from .atomic_control_nodes import (
+    SequenceControlNode,
+    BranchControlNode,
+    MergeControlNode,
+    ForkControlNode,
+    JoinControlNode,
 )
-from .composite_nodes import (
-    BatchNode,
-    BreakNode,
-    ContinueNode,
-    DoWhileNode,
-    ForEachNode,
-    ForNode,
-    IfElseNode,
-    ParallelNode,
-    RaceNode,
-    SwitchNode,
-    ThrottleNode,
-    WhileNode,
+from .exception_nodes import (
+    TryCatchNode,
+    RetryNode,
+    TimeoutNode,
+    CircuitBreakerNode,
+)
+from .composite_control_nodes import (
+    CompositeControlNode,
+)
+from .ai_control_nodes import (
+    AIRouter,
+    AIPlanner,
+)
+from .ai_task_nodes import (
+    AIAnalyzer,
+    AIGenerator,
+    AIEvaluator,
+)
+from .node_types import (
+    TaskNode,
+    ControlNode,
+    ExceptionNode,
 )
 from .core import BaseNode, Graph
 
@@ -38,26 +48,42 @@ class GraphConfigParser:
 
     # 内置节点类型映射
     BUILTIN_NODE_TYPES = {
-        # 原子化控制流节点
-        "SequenceNode": SequenceNode,
-        "BranchNode": BranchNode,
-        "MergeNode": MergeNode,
-        "ForkNode": ForkNode,
-        "JoinNode": JoinNode,
-        # 复合节点 - 控制流类
-        "IfElseNode": IfElseNode,
-        "SwitchNode": SwitchNode,
-        "WhileNode": WhileNode,
-        "DoWhileNode": DoWhileNode,
-        "ForNode": ForNode,
-        "ForEachNode": ForEachNode,
-        "BreakNode": BreakNode,
-        "ContinueNode": ContinueNode,
-        # 复合节点 - 并行控制类
-        "ParallelNode": ParallelNode,
-        "RaceNode": RaceNode,
-        "ThrottleNode": ThrottleNode,
-        "BatchNode": BatchNode,
+        # 基础节点类型
+        "TaskNode": TaskNode,
+        "ControlNode": ControlNode,
+        "ExceptionNode": ExceptionNode,
+        
+        # 原子控制节点
+        "SequenceControlNode": SequenceControlNode,
+        "BranchControlNode": BranchControlNode,
+        "MergeControlNode": MergeControlNode,
+        "ForkControlNode": ForkControlNode,
+        "JoinControlNode": JoinControlNode,
+        
+        # 异常处理节点
+        "TryCatchNode": TryCatchNode,
+        "RetryNode": RetryNode,
+        "TimeoutNode": TimeoutNode,
+        "CircuitBreakerNode": CircuitBreakerNode,
+        
+        # 复合控制节点
+        "CompositeControlNode": CompositeControlNode,
+        
+        # AI控制节点
+        "AIRouter": AIRouter,
+        "AIPlanner": AIPlanner,
+        
+        # AI任务节点
+        "AIAnalyzer": AIAnalyzer,
+        "AIGenerator": AIGenerator,
+        "AIEvaluator": AIEvaluator,
+        
+        # 保留原有名称的兼容性映射
+        "SequenceNode": SequenceControlNode,
+        "BranchNode": BranchControlNode,
+        "MergeNode": MergeControlNode,
+        "ForkNode": ForkControlNode,
+        "JoinNode": JoinControlNode,
     }
 
     def __init__(self):
@@ -188,40 +214,14 @@ class GraphConfigParser:
         metadata = node_config.get("metadata", {})
 
         # 创建节点实例
-        if node_type == "FunctionNode" and "function" in params:
-            # 特殊处理 FunctionNode
-            function_path = params["function"]
-            function = self._load_function(function_path)
-            node = node_class(
-                node_id=node_id, name=node_name, function=function, **metadata
-            )
-        else:
-            # 创建节点并设置参数
-            node = node_class(node_id=node_id, name=node_name, **metadata)
+        node = node_class(node_id=node_id, name=node_name, **metadata)
 
-            # 设置节点参数
-            for param_name, param_value in params.items():
-                if hasattr(node, param_name):
-                    setattr(node, param_name, param_value)
+        # 设置节点参数
+        for param_name, param_value in params.items():
+            if hasattr(node, param_name):
+                setattr(node, param_name, param_value)
 
         return node
-
-    def _load_function(self, function_path: str) -> Any:
-        """
-        加载函数
-
-        Args:
-            function_path: 函数路径，格式为 "module.path:function_name"
-
-        Returns:
-            callable: 函数对象
-        """
-        try:
-            module_path, function_name = function_path.split(":")
-            module = importlib.import_module(module_path)
-            return getattr(module, function_name)
-        except Exception as e:
-            raise ValueError(f"无法加载函数 {function_path}: {e}")
 
     def _create_edge(self, graph: Graph, edge_config: dict[str, Any]) -> None:
         """

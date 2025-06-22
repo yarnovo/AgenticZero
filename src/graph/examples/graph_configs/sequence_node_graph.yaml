@@ -1,0 +1,36 @@
+name: "顺序节点演示"
+description: "展示SequenceNode的使用方法 - 简单的数据处理流水线"
+
+start_node: "input"
+end_nodes: ["output"]
+
+input:
+  type: SequenceNode
+  name: "输入节点"
+  params:
+    process_func: "lambda x: x * 2"
+
+process:
+  type: SequenceNode
+  name: "处理节点"
+  params:
+    process_func: "lambda x: x + 10"
+
+output:
+  type: SequenceNode
+  name: "输出节点"
+  params:
+    process_func: "lambda x: f'结果: {x}'"
+
+edges:
+  - from: input
+    to: process
+    
+  - from: process
+    to: output
+
+metadata:
+  version: "1.0"
+  category: "原子节点"
+  example_input: 5
+  expected_output: "结果: 20"

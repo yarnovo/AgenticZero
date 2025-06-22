@@ -87,6 +87,22 @@ class ExecutionContext:
         if self.end_time:
             return (self.end_time - self.start_time).total_seconds()
         return (datetime.now() - self.start_time).total_seconds()
+    
+    @property
+    def graph_output(self):
+        """获取图的最终输出
+        
+        返回最后执行的节点的输出
+        """
+        if not self.execution_history:
+            return None
+            
+        # 找到最后一个成功执行的节点
+        for exec_record in reversed(self.execution_history):
+            if exec_record.get("result") is not None and exec_record.get("error") is None:
+                return exec_record["result"]
+                
+        return None
 
 
 class GraphExecutor:
@@ -319,7 +335,7 @@ class GraphExecutor:
 
             # 检查是否是汇聚节点
             next_node = self.graph.get_node(next_node_id)
-            if hasattr(next_node, "_received_inputs"):  # JoinNode
+            if hasattr(next_node, "join_inputs"):  # JoinControlNode
                 # 处理汇聚节点
                 await self._handle_join_node(next_node_id, node_id, actual_data)
             else:

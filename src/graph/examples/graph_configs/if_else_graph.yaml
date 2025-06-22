@@ -1,0 +1,39 @@
+name: "条件判断演示"
+description: "展示IfElseNode复合节点的使用方法"
+
+start_node: "input"
+end_nodes: ["output"]
+
+input:
+  type: SequenceNode
+  name: "输入数据"
+  params:
+    process_func: "lambda x: x"
+
+if_else:
+  type: IfElseNode
+  name: "条件判断"
+  params:
+    condition_func: "lambda x: x > 10"
+    then_process: "lambda x: x * 2"
+    else_process: "lambda x: x + 5"
+
+output:
+  type: SequenceNode
+  name: "输出结果"
+  params:
+    process_func: "lambda x: f'结果: {x}'"
+
+edges:
+  - from: input
+    to: if_else
+  - from: if_else
+    to: output
+
+metadata:
+  version: "1.0"
+  category: "基础控制类复合节点"
+  example_input_high: 15
+  expected_output_high: "结果: 30"
+  example_input_low: 5
+  expected_output_low: "结果: 10"

@@ -88,61 +88,6 @@ class BaseNode(ABC):
         self.error = None
         self._input_data = None
 
-    def __rshift__(self, other: "BaseNode") -> "BaseNode":
-        """
-        重载 >> 操作符，用于链式连接节点
-
-        示例:
-            node1 >> node2 >> node3
-        """
-        if not hasattr(self, "_temp_graph"):
-            self._temp_graph = Graph()
-
-        # 添加节点（如果不存在）
-        if self.node_id not in self._temp_graph.nodes:
-            self._temp_graph.add_node(self.node_id, self)
-        if other.node_id not in self._temp_graph.nodes:
-            self._temp_graph.add_node(other.node_id, other)
-
-        # 添加边
-        self._temp_graph.add_edge(self.node_id, other.node_id)
-        other._temp_graph = self._temp_graph
-        return other
-
-    def __sub__(self, action: str) -> "ConditionalEdge":
-        """
-        重载 - 操作符，用于创建条件边
-
-        示例:
-            node1 - "success" >> node2
-            node1 - "failure" >> node3
-        """
-        return ConditionalEdge(self, action)
-
-
-class ConditionalEdge:
-    """条件边的辅助类"""
-
-    def __init__(self, node: BaseNode, action: str):
-        self.node = node
-        self.action = action
-
-    def __rshift__(self, other: BaseNode) -> BaseNode:
-        """完成条件边的连接"""
-        if not hasattr(self.node, "_temp_graph"):
-            self.node._temp_graph = Graph()
-
-        # 添加节点（如果不存在）
-        if self.node.node_id not in self.node._temp_graph.nodes:
-            self.node._temp_graph.add_node(self.node.node_id, self.node)
-        if other.node_id not in self.node._temp_graph.nodes:
-            self.node._temp_graph.add_node(other.node_id, other)
-
-        # 添加带动作的边
-        self.node._temp_graph.add_edge(self.node.node_id, other.node_id, self.action)
-        other._temp_graph = self.node._temp_graph
-        return other
-
 
 class Edge:
     """图的边"""

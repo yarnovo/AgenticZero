@@ -1,0 +1,54 @@
+name: "AI分层代理演示"
+description: "展示分层代理结构 - 监督者分配任务给专门工作者"
+
+start_node: "supervisor"
+end_nodes: ["report_generator"]
+
+supervisor:
+  type: SupervisorNode
+  name: "任务监督者"
+  params:
+    worker_selector: "lambda x: ['data_analyst', 'ml_engineer'] if 'analysis' in str(x) else ['developer']"
+    result_aggregator: "lambda results: {'summary': 'Task completed', 'worker_results': results}"
+
+data_analyst:
+  type: WorkerNode
+  name: "数据分析师"
+  params:
+    specialty: "data_analysis"
+    task_processor: "lambda x: {'analysis': 'Data patterns found', 'insights': ['trend1', 'trend2']}"
+
+ml_engineer:
+  type: WorkerNode
+  name: "机器学习工程师"
+  params:
+    specialty: "machine_learning"
+    task_processor: "lambda x: {'model': 'Random Forest', 'accuracy': 0.92}"
+
+developer:
+  type: WorkerNode
+  name: "开发工程师"
+  params:
+    specialty: "software_development"
+    task_processor: "lambda x: {'code': 'Implementation complete', 'tests': 'All passed'}"
+
+report_generator:
+  type: SequenceNode
+  name: "报告生成器"
+  params:
+    process_func: "lambda x: {'final_report': 'Project completed successfully', 'details': x}"
+
+# 边连接
+edges:
+  - from: "supervisor"
+    to: "data_analyst"
+  - from: "supervisor"
+    to: "ml_engineer"
+  - from: "supervisor"
+    to: "developer"
+  - from: "data_analyst"
+    to: "report_generator"
+  - from: "ml_engineer"
+    to: "report_generator"
+  - from: "developer"
+    to: "report_generator"

@@ -1,0 +1,66 @@
+name: "AI意图路由演示"
+description: "展示IntentRouterNode的使用 - 根据用户意图智能路由"
+
+start_node: "intent_router"
+end_nodes: ["result_collector"]
+
+intent_router:
+  type: IntentRouterNode
+  name: "意图识别路由"
+  params:
+    intent_map:
+      query: "search_handler"
+      create: "create_handler"
+      update: "update_handler"
+      delete: "delete_handler"
+
+search_handler:
+  type: SequenceNode
+  name: "查询处理器"
+  params:
+    process_func: "lambda x: {'action': 'search', 'query': x.get('route'), 'result': 'Found 10 items'}"
+
+create_handler:
+  type: SequenceNode
+  name: "创建处理器"
+  params:
+    process_func: "lambda x: {'action': 'create', 'data': x.get('route'), 'result': 'Created successfully'}"
+
+update_handler:
+  type: SequenceNode
+  name: "更新处理器"
+  params:
+    process_func: "lambda x: {'action': 'update', 'data': x.get('route'), 'result': 'Updated successfully'}"
+
+delete_handler:
+  type: SequenceNode
+  name: "删除处理器"
+  params:
+    process_func: "lambda x: {'action': 'delete', 'data': x.get('route'), 'result': 'Deleted successfully'}"
+
+result_collector:
+  type: MergeNode
+  name: "结果收集"
+
+# 边连接
+edges:
+  - from: "intent_router"
+    to: "search_handler"
+    condition: "query"
+  - from: "intent_router"
+    to: "create_handler"
+    condition: "create"
+  - from: "intent_router"
+    to: "update_handler"
+    condition: "update"
+  - from: "intent_router"
+    to: "delete_handler"
+    condition: "delete"
+  - from: "search_handler"
+    to: "result_collector"
+  - from: "create_handler"
+    to: "result_collector"
+  - from: "update_handler"
+    to: "result_collector"
+  - from: "delete_handler"
+    to: "result_collector"

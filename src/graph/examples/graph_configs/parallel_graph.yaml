@@ -1,0 +1,39 @@
+name: "并行处理演示"
+description: "展示ParallelNode复合节点的使用方法"
+
+start_node: "input"
+end_nodes: ["output"]
+
+input:
+  type: SequenceNode
+  name: "输入数据"
+  params:
+    process_func: "lambda x: x"
+
+parallel:
+  type: ParallelNode
+  name: "并行处理"
+  params:
+    tasks:
+      task1: "lambda x: x * 2"
+      task2: "lambda x: x + 10"
+      task3: "lambda x: x ** 2"
+    merge_func: "lambda results: sum(results.values())"
+
+output:
+  type: SequenceNode
+  name: "输出结果"
+  params:
+    process_func: "lambda x: f'并行结果: {x}'"
+
+edges:
+  - from: input
+    to: parallel
+  - from: parallel
+    to: output
+
+metadata:
+  version: "1.0"
+  category: "并行控制类复合节点"
+  example_input: 5
+  expected_output: "并行结果: 50"

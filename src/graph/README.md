@@ -1,243 +1,430 @@
-# 图执行框架
+# AgenticZero 图执行框架
 
-这是一个基于原子化控制流节点的图执行框架，支持创建复杂的工作流和数据处理管道。
+一个强大的、支持AI智能决策和中断恢复的图执行框架。
+
+## 目录
+
+- [概述](#概述)
+- [核心概念](#核心概念)
+- [快速开始](#快速开始)
+- [节点类型](#节点类型)
+- [高级功能](#高级功能)
+- [API参考](#api参考)
+- [最佳实践](#最佳实践)
+
+## 概述
+
+AgenticZero图执行框架是一个用于构建复杂工作流的Python库。它提供了丰富的节点类型、AI集成能力、异常处理机制，以及完整的序列化和恢复支持。
+
+### 主要特性
+
+- **清晰的节点层次结构**：任务节点、控制节点、异常节点
+- **AI智能集成**：支持任意AI Agent的接入
+- **并行执行支持**：Fork/Join模式
+- **异常处理**：Try-Catch、重试、超时、熔断器
+- **中断恢复**：完整的快照和恢复机制
+- **可扩展设计**：易于添加自定义节点类型
 
 ## 核心概念
 
-### 1. 节点 (Node)
-节点是图中的基本执行单元，每个节点都有三个生命周期方法：
-- `prep()`: 准备阶段，用于初始化
-- `exec()`: 执行阶段，执行主要逻辑
-- `post()`: 后处理阶段，决定下一步动作
+### 节点层次结构
 
-### 2. 边 (Edge)
-边连接节点，定义执行流程。支持：
-- 默认边：简单的顺序执行
-- 条件边：根据节点返回的动作选择不同路径
-
-### 3. 图 (Graph)
-图是节点和边的集合，定义了完整的工作流。图是单入口单出口的设计。
-
-## 原子化控制流节点
-
-框架提供了5种基础的原子化控制流节点，可以组合实现复杂的控制流模式：
-
-### 1. SequenceNode（顺序节点）
-- **特征**：一个输入，一个输出
-- **用途**：直接执行，无条件传递
-- **示例**：
-```python
-node = SequenceNode("process", "处理节点", lambda x: x * 2)
+```
+BaseNode (抽象基类)
+├── TaskNode (任务节点 - 执行具体业务逻辑)
+│   └── AITaskNode (AI任务节点)
+├── ControlNode (控制节点 - 控制执行流程)
+│   ├── AtomicControlNode (原子控制节点)
+│   ├── CompositeControlNode (复合控制节点)
+│   └── AIControlNode (AI控制节点)
+└── ExceptionNode (异常节点 - 处理异常情况)
 ```
 
-### 2. BranchNode（分支节点）
-- **特征**：一个输入，多个输出
-- **用途**：根据条件选择一个输出路径
-- **示例**：
-```python
-branch = BranchNode("check", "条件检查", 
-    lambda x: "high" if x > 50 else "low")
-```
+### 执行生命周期
 
-### 3. MergeNode（合并节点）
-- **特征**：多个输入，一个输出
-- **用途**：任意一个输入到达即可继续
-- **示例**：
-```python
-merge = MergeNode("merge", "合并点")
-```
+每个节点都遵循三阶段执行模型：
 
-### 4. ForkNode（分叉节点）
-- **特征**：一个输入，多个输出
-- **用途**：同时激活所有输出路径（并行开始）
-- **示例**：
-```python
-fork = ForkNode("fork", "分叉点")
-```
+1. **prep()** - 准备阶段
+2. **exec()** - 执行阶段
+3. **post()** - 后处理阶段
 
-### 5. JoinNode（汇聚节点）
-- **特征**：多个输入，一个输出
-- **用途**：所有输入都到达才继续（并行结束）
-- **示例**：
-```python
-join = JoinNode("join", "汇聚点", 
-    lambda results: sum(results), expected_inputs=3)
-```
+## 快速开始
 
-## 高级控制流模式
-
-通过组合原子节点，可以实现：
-
-### 1. 循环模式
-- **组合**：分支节点 + 合并节点（形成回路）
-- **示例**：计算累加和、迭代处理
-
-### 2. 条件执行
-- **组合**：分支节点 + 合并节点
-- **示例**：权限检查、条件路由
-
-### 3. 并行执行
-- **组合**：分叉节点 + 汇聚节点
-- **示例**：并行数据处理、多任务执行
-
-### 4. 异常处理
-- **组合**：分支节点的特殊应用
-- **示例**：错误恢复、重试机制
-
-## 使用方式
-
-### 1. 程序化创建
+### 基础示例
 
 ```python
-from src.graph import Graph, GraphExecutor, SequenceNode, Edge
+import asyncio
+from src.graph import (
+    EnhancedGraph,
+    SequenceControlNode,
+    BranchControlNode,
+    TaskNode,
+    ResumableExecutor
+)
 
 # 创建图
-graph = Graph()
+graph = EnhancedGraph("my_workflow")
 
-# 添加节点
-node1 = SequenceNode("input", "输入节点")
-node2 = SequenceNode("process", "处理节点", lambda x: x * 2)
-graph.add_node(node1)
-graph.add_node(node2)
+# 创建节点
+start = SequenceControlNode("start", "开始", lambda x: {"data": x})
+process = TaskNode("process", "处理", lambda x: x["data"] * 2)
+end = TaskNode("end", "结束", lambda x: {"result": x})
 
-# 连接节点
-graph.add_edge(Edge("input", "process"))
+# 添加节点和边
+graph.add_node(start)
+graph.add_node(process)
+graph.add_node(end)
 
-# 设置起始节点
-graph.set_start_node("input")
+graph.add_edge("start", "process")
+graph.add_edge("process", "end")
+
+graph.set_start("start")
+graph.add_end("end")
 
 # 执行
-executor = GraphExecutor(graph)
-context = await executor.execute()
+executor = ResumableExecutor(graph)
+context = await executor.execute_with_checkpoints(initial_input=10)
+print(f"结果: {context.graph_output}")  # 结果: {"result": 20}
 ```
 
-### 2. YAML配置方式
+### AI节点示例
+
+```python
+from src.graph import AIAnalyzer, AIRouter, IAgent
+
+# 实现自定义Agent
+class MyAgent(IAgent):
+    async def think(self, messages, context=None):
+        # 实现AI思考逻辑
+        return AgentResponse(content="分析结果", confidence=0.9)
+    
+    async def decide(self, options, criteria=None, context=None):
+        # 实现决策逻辑
+        return options[0]
+
+# 使用AI节点
+agent = MyAgent()
+analyzer = AIAnalyzer("analyzer", "智能分析", agent=agent)
+router = AIRouter("router", "智能路由", routes=["path1", "path2"], agent=agent)
+```
+
+## 节点类型
+
+### 任务节点 (TaskNode)
+
+执行具体的业务逻辑。
+
+```python
+# 使用函数
+node = TaskNode("task1", "任务1", process_func=lambda x: x * 2)
+
+# 自定义任务节点
+class MyTask(TaskNode):
+    async def _execute_task(self, input_data):
+        # 自定义处理逻辑
+        return {"processed": input_data}
+```
+
+### 控制节点 (ControlNode)
+
+控制执行流程。
+
+#### 原子控制节点
+
+- **SequenceControlNode**: 顺序执行
+- **BranchControlNode**: 条件分支
+- **MergeControlNode**: 合并多个输入
+- **ForkControlNode**: 并行分叉
+- **JoinControlNode**: 并行汇聚
+
+```python
+# 条件分支
+branch = BranchControlNode(
+    "branch",
+    "条件判断",
+    condition_func=lambda x: "high" if x > 10 else "low"
+)
+
+# 并行执行
+fork = ForkControlNode("fork", "分叉", fork_count=3)
+join = JoinControlNode("join", "汇聚")
+```
+
+### AI节点
+
+#### AI任务节点
+
+- **AIAnalyzer**: 智能分析
+- **AIGenerator**: 智能生成
+- **AIEvaluator**: 智能评估
+
+#### AI控制节点
+
+- **AIRouter**: 智能路由
+- **AIPlanner**: 智能规划
+
+### 异常节点 (ExceptionNode)
+
+处理异常情况。
+
+- **TryCatchNode**: 异常捕获
+- **RetryNode**: 自动重试
+- **TimeoutNode**: 超时控制
+- **CircuitBreakerNode**: 熔断保护
+
+```python
+# 重试机制
+retry = RetryNode(
+    "retry",
+    "重试任务",
+    target_func=unstable_func,
+    max_retries=3,
+    retry_delay=1.0
+)
+
+# 超时控制
+timeout = TimeoutNode(
+    "timeout",
+    "限时任务",
+    target_func=slow_func,
+    timeout_seconds=30.0
+)
+```
+
+## 高级功能
+
+### 序列化和反序列化
+
+```python
+# 序列化图
+serialized = graph.serialize()
+
+# 保存到文件
+import json
+with open("graph.json", "w") as f:
+    json.dump(serialized, f)
+
+# 反序列化
+node_factory = {
+    "SequenceControlNode": SequenceControlNode,
+    "BranchControlNode": BranchControlNode,
+    # ... 其他节点类型
+}
+restored_graph = EnhancedGraph.deserialize(data, node_factory)
+```
+
+### 中断和恢复
+
+```python
+# 创建可恢复的执行器
+executor = ResumableExecutor(graph)
+
+# 带检查点执行
+def on_checkpoint(snapshot):
+    # 保存快照
+    graph.save_snapshot(snapshot, f"checkpoint_{snapshot.timestamp}.json")
+
+try:
+    context = await executor.execute_with_checkpoints(
+        initial_input=data,
+        checkpoint_callback=on_checkpoint
+    )
+except Exception as e:
+    # 从最后的检查点恢复
+    last_snapshot = executor.snapshots[-1]
+    context = await executor.resume_from_snapshot(last_snapshot)
+```
+
+### 钩子机制
+
+```python
+# 注册钩子
+def on_node_start(node):
+    print(f"开始执行: {node.node_id}")
+
+def on_node_complete(node):
+    print(f"完成执行: {node.node_id}")
+
+executor.register_hook("node_start", on_node_start)
+executor.register_hook("node_complete", on_node_complete)
+```
+
+### 配置解析
+
+支持从YAML文件加载图配置：
 
 ```yaml
-name: "示例工作流"
-start_node: "input"
-
+name: my_workflow
 nodes:
-  - id: input
-    type: SequenceNode
-    name: "输入节点"
-    
-  - id: branch
-    type: BranchNode
-    name: "条件分支"
-    
-  - id: process_high
-    type: SequenceNode
-    name: "高值处理"
-    
-  - id: process_low
-    type: SequenceNode
-    name: "低值处理"
-    
-  - id: merge
-    type: MergeNode
-    name: "合并节点"
-
+  - id: start
+    type: SequenceControlNode
+    name: 开始节点
+  - id: process
+    type: TaskNode
+    name: 处理节点
 edges:
-  - source: input
-    target: branch
-    
-  - source: branch
-    target: process_high
-    action: "high"
-    
-  - source: branch
-    target: process_low
-    action: "low"
-    
-  - source: process_high
-    target: merge
-    
-  - source: process_low
-    target: merge
+  - from: start
+    to: process
+start_node: start
+end_nodes: [process]
 ```
 
-## 功能节点
+```python
+from src.graph import load_graph_from_yaml
 
-除了原子化控制流节点，框架还提供了多种功能节点：
+graph = load_graph_from_yaml("workflow.yaml")
+```
 
-### SimpleNode
-基础节点，用于简单的消息传递。
+## API参考
 
-### DataProcessorNode
-数据处理节点，支持各种数据转换操作。
+### 基础类
 
-### ConditionalNode
-条件判断节点（旧版本，建议使用BranchNode）。
+#### BaseNode
 
-### LoggingNode
-日志记录节点，用于调试和监控。
+所有节点的基类。
 
-### DelayNode
-延迟节点，用于控制执行节奏。
+**方法**:
+- `async prep()`: 准备阶段
+- `async exec()`: 执行阶段
+- `async post()`: 后处理阶段
+- `async reset()`: 重置节点状态
 
-### ErrorNode
-错误处理节点，用于测试错误流程。
+#### Graph
 
-### RandomChoiceNode
-随机选择节点，模拟随机行为。
+基础图结构。
 
-### AccumulatorNode
-累加器节点，收集多个输入。
+**方法**:
+- `add_node(node)`: 添加节点
+- `add_edge(from_node, to_node, condition=None)`: 添加边
+- `set_start(node_id)`: 设置起始节点
+- `add_end(node_id)`: 添加结束节点
+- `validate()`: 验证图结构
 
-### FunctionNode
-函数节点，执行自定义Python函数。
+#### GraphExecutor
 
-## 执行器特性
+图执行器。
 
-### GraphExecutor
-- 支持异步执行
-- 自动处理并行节点
-- 提供执行上下文管理
-- 支持钩子函数（before_node, after_node, on_error, on_complete）
-- 防止无限循环（max_iterations）
+**方法**:
+- `async execute(initial_input=None, start_node_id=None)`: 执行图
+- `add_hook(event, callback)`: 添加钩子
 
-### ExecutionContext
-- 维护共享数据
-- 记录执行历史
-- 提供执行统计
+### 增强功能类
 
-## 示例
+#### EnhancedGraph
 
-查看 `examples/` 目录下的示例：
+支持序列化和快照的增强图。
 
-1. **atomic_nodes_basic.py** - 基础原子节点使用示例
-2. **atomic_nodes_advanced.py** - 高级控制流模式示例
-3. **simple_graph_example.py** - 简单图构建示例
-4. **run_graph.py** - YAML配置执行示例
+**方法**:
+- `serialize()`: 序列化为字典
+- `deserialize(data, node_factory)`: 从字典反序列化
+- `create_snapshot()`: 创建快照
+- `save_snapshot(snapshot, filepath)`: 保存快照
+- `load_snapshot(filepath)`: 加载快照
+
+#### ResumableExecutor
+
+可恢复的执行器。
+
+**方法**:
+- `execute_with_checkpoints(initial_input, checkpoint_callback)`: 带检查点执行
+- `resume_from_snapshot(snapshot)`: 从快照恢复
+- `pause()`: 暂停执行
+- `resume()`: 恢复执行
+- `register_hook(event, callback)`: 注册钩子
+
+### Agent接口
+
+#### IAgent
+
+AI Agent的抽象接口。
+
+**方法**:
+- `async think(messages, context)`: 思考/推理
+- `async plan(goal, constraints, context)`: 制定计划
+- `async decide(options, criteria, context)`: 做出决策
+- `async evaluate(subject, criteria, context)`: 评估
 
 ## 最佳实践
 
-1. **单一职责**：每个节点应该只负责一个具体的任务
-2. **错误处理**：使用分支节点实现错误处理和恢复
-3. **并行优化**：合理使用分叉和汇聚节点提高性能
-4. **循环控制**：使用分支节点控制循环退出条件，避免无限循环
-5. **数据传递**：通过执行上下文在节点间传递数据
+### 1. 选择合适的节点类型
 
-## 扩展
+- 业务逻辑 → TaskNode
+- 流程控制 → ControlNode
+- 异常处理 → ExceptionNode
+- AI增强 → AI节点
 
-可以通过继承 `BaseNode` 创建自定义节点类型：
+### 2. 错误处理
+
+始终考虑错误处理：
 
 ```python
-from src.graph.core import BaseNode
+# 使用Try-Catch包装不稳定的操作
+try_catch = TryCatchNode(
+    "safe_operation",
+    "安全操作",
+    try_func=risky_operation,
+    catch_func=handle_error
+)
 
-class CustomNode(BaseNode):
-    def __init__(self, node_id: str, name: str = None):
-        super().__init__(node_id, name)
-        
-    def exec(self, input_data):
-        # 实现自定义逻辑
-        return processed_data
+# 对外部服务使用超时控制
+timeout = TimeoutNode(
+    "api_call",
+    "API调用",
+    target_func=call_external_api,
+    timeout_seconds=30.0
+)
 ```
 
-## 注意事项
+### 3. 性能优化
 
-1. 图必须是有向无环图（除非特意创建循环）
-2. 每个图必须有一个起始节点
-3. 节点ID必须唯一
-4. 执行器有最大迭代次数限制，防止无限循环
+- 使用并行节点处理独立任务
+- 合理设置检查点间隔
+- 避免在节点中执行长时间阻塞操作
+
+### 4. 可维护性
+
+- 为节点使用描述性的ID和名称
+- 将复杂逻辑封装为自定义节点类
+- 使用配置文件管理大型工作流
+
+### 5. 测试
+
+```python
+# 单元测试节点
+@pytest.mark.asyncio
+async def test_my_node():
+    node = MyCustomNode("test", "测试")
+    node._input_data = test_input
+    result = await node.exec()
+    assert result == expected_output
+
+# 集成测试工作流
+@pytest.mark.asyncio
+async def test_workflow():
+    graph = create_test_graph()
+    executor = ResumableExecutor(graph)
+    context = await executor.execute(test_data)
+    assert context.graph_output == expected_result
+```
+
+## 示例项目
+
+查看 `examples/` 目录获取更多示例：
+
+- `basic_workflow.py` - 基础工作流
+- `ai_workflow.py` - AI增强工作流
+- `parallel_workflow.py` - 并行执行和异常处理
+
+## 贡献指南
+
+欢迎贡献！请遵循以下步骤：
+
+1. Fork项目
+2. 创建特性分支
+3. 提交更改
+4. 推送到分支
+5. 创建Pull Request
+
+## 许可证
+
+本项目采用MIT许可证。

@@ -1,0 +1,62 @@
+name: "AI分散收集模式演示"
+description: "展示ScatterGatherNode - 多代理协作处理复杂任务"
+
+start_node: "task_receiver"
+end_nodes: ["final_output"]
+
+task_receiver:
+  type: SequenceNode
+  name: "任务接收器"
+  params:
+    process_func: "lambda x: {'request': 'Analyze market trends for AI products', 'timeframe': '2024', 'regions': ['US', 'EU', 'Asia']}"
+
+scatter_gather:
+  type: ScatterGatherNode
+  name: "多代理协调器"
+  params:
+    scatter_strategy: "task_based"
+    gather_strategy: "synthesize"
+    agent_specs:
+      - type: "market_researcher"
+        focus: "市场数据收集"
+      - type: "trend_analyzer" 
+        focus: "趋势分析"
+      - type: "competitor_analyst"
+        focus: "竞争对手分析"
+      - type: "forecast_expert"
+        focus: "预测建模"
+
+critic_node:
+  type: CriticNode
+  name: "结果评审"
+  params:
+    critique_style: "analytical"
+    severity_level: 0.7
+
+scorer_node:
+  type: ScorerNode
+  name: "质量评分"
+  params:
+    scoring_dimensions:
+      accuracy: 0.3
+      completeness: 0.3
+      insights: 0.2
+      actionability: 0.2
+    aggregation_method: "weighted_average"
+
+final_output:
+  type: SequenceNode
+  name: "最终输出"
+  params:
+    process_func: "lambda x: {'status': 'Analysis complete', 'report': x, 'next_steps': ['Present to stakeholders', 'Develop strategy']}"
+
+# 边连接
+edges:
+  - from: "task_receiver"
+    to: "scatter_gather"
+  - from: "scatter_gather"
+    to: "critic_node"
+  - from: "critic_node"
+    to: "scorer_node"
+  - from: "scorer_node"
+    to: "final_output"
