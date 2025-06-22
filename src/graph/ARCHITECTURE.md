@@ -13,6 +13,84 @@ AgenticZero图框架采用分层架构设计，将节点系统分为三个主要
 
 ## 核心架构
 
+### 配置系统架构
+
+AgenticZero提供完整的图配置系统，包括Schema验证、配置代理和文件管理：
+
+#### Schema验证架构
+
+```
+配置验证系统
+├── JSON Schema定义
+│   ├── 数组格式Schema (nodes数组)
+│   ├── 内联格式Schema (直接节点定义)
+│   ├── 节点Schema (类型、参数验证)
+│   └── 边Schema (连接关系验证)
+├── 语义验证器
+│   ├── 节点引用验证
+│   ├── 图连通性验证
+│   ├── 参数有效性验证
+│   └── 循环检测
+└── 错误报告
+    ├── 中文语义化错误信息
+    ├── 错误位置定位
+    └── 修复建议
+```
+
+#### 配置代理架构
+
+```
+GraphConfigProxy
+├── 内存图表示
+├── CRUD操作API
+│   ├── 节点操作 (add/remove/update)
+│   ├── 边操作 (add/remove/update)
+│   ├── 起始/结束节点管理
+│   └── 元数据管理
+├── 实时验证
+├── 序列化支持
+│   ├── YAML格式
+│   ├── 字典格式
+│   └── 文件读写
+└── 高级操作
+    ├── 图克隆
+    ├── 图合并
+    ├── 统计信息
+    └── 冲突解决
+```
+
+#### 支持的配置格式
+
+**数组格式**（传统格式）：
+```yaml
+name: "工作流名称"
+nodes:
+  - id: "node1"
+    type: "TaskNode"
+    name: "节点1"
+edges:
+  - from: "node1"
+    to: "node2"
+start_node: "node1"
+end_nodes: ["node2"]
+```
+
+**内联格式**（简化格式）：
+```yaml
+name: "工作流名称"
+start_node: "node1"
+end_nodes: ["node2"]
+node1:
+  type: "TaskNode"
+  name: "节点1"
+node2:
+  type: "TaskNode"
+  name: "节点2"
+edges:
+  - from: "node1"
+    to: "node2"
+```
+
 ### 节点层次结构
 
 ```
@@ -283,3 +361,136 @@ def custom_node_factory(node_data):
 - 事务支持
 - 版本控制
 - A/B测试能力
+
+## 配置系统使用指南
+
+### 1. Schema验证
+
+#### 基础验证
+```python
+from src.graph.schema import validate_graph_config
+
+config = {
+    "name": "示例工作流",
+    "nodes": [...],
+    "edges": [...],
+    "start_node": "start",
+    "end_nodes": ["end"]
+}
+
+valid, errors = validate_graph_config(config)
+if not valid:
+    for error in errors:
+        print(f"验证错误: {error}")
+```
+
+#### 文件验证
+```python
+from src.graph.schema import validate_graph_config_file
+
+valid, errors = validate_graph_config_file("workflow.yaml")
+```
+
+### 2. 配置代理使用
+
+#### 创建和操作图
+```python
+from src.graph.config_proxy import GraphConfigProxy
+
+# 创建空图
+proxy = GraphConfigProxy.create_empty("工作流名称", "描述")
+
+# 添加节点
+proxy.add_node("task1", "TaskNode", "任务1", 
+               description="处理数据",
+               params={"func": "process_data"},
+               metadata={"category": "data"})
+
+# 添加边
+proxy.add_edge("task1", "task2", action="success", weight=1.0)
+
+# 设置起始和结束节点
+proxy.start_node = "task1"
+proxy.add_end_node("task2")
+
+# 验证配置
+if proxy.is_valid():
+    print("✅ 配置有效")
+else:
+    errors = proxy.get_validation_errors()
+    for error in errors:
+        print(f"❌ {error}")
+```
+
+#### 高级操作
+```python
+# 克隆图
+cloned = proxy.clone()
+
+# 合并图
+merged = proxy1.merge(proxy2, conflict_strategy="override")
+
+# 获取统计信息
+stats = proxy.get_statistics()
+print(f"节点数: {stats['node_count']}")
+print(f"边数: {stats['edge_count']}")
+
+# 序列化
+yaml_str = proxy.to_yaml()
+config_dict = proxy.to_dict()
+
+# 保存到文件
+proxy.save_to_file("workflow.yaml")
+```
+
+### 3. 节点类型和参数
+
+#### 支持的节点类型
+- **TaskNode**: 基础任务节点，无特殊参数要求
+- **BranchControlNode**: 分支节点，必需参数：`condition_func`
+- **RetryNode**: 重试节点，参数：`max_retries` (正整数), `retry_delay` (非负数)
+- **TimeoutNode**: 超时节点，参数：`timeout_seconds` (正数)
+- **AIRouter**: AI路由节点，必需参数：`routes` (至少2个元素的列表)
+
+#### 参数验证规则
+```python
+# 分支节点示例
+proxy.add_node("branch", "BranchControlNode", "条件分支",
+               params={"condition_func": "lambda x: x > 10"})
+
+# 重试节点示例
+proxy.add_node("retry", "RetryNode", "重试处理",
+               params={"max_retries": 3, "retry_delay": 1.0})
+
+# AI路由节点示例
+proxy.add_node("router", "AIRouter", "智能路由",
+               params={"routes": ["path_a", "path_b", "path_c"]})
+```
+
+### 4. 错误处理和调试
+
+#### 常见错误类型
+1. **节点引用错误**: 起始节点、结束节点或边引用不存在的节点
+2. **参数验证错误**: 节点类型特定的参数缺失或无效
+3. **连通性错误**: 从起始节点无法到达结束节点
+4. **重复定义**: 节点ID重复定义
+
+#### 调试技巧
+```python
+# 获取详细的验证信息
+valid, errors = proxy.validate()
+if not valid:
+    print("配置验证失败:")
+    for i, error in enumerate(errors, 1):
+        print(f"  {i}. {error}")
+
+# 检查图连通性
+stats = proxy.get_statistics()
+if stats["isolated_nodes"]:
+    print(f"发现孤立节点: {stats['isolated_nodes']}")
+
+# 分析节点和边
+print(f"节点类型分布: {stats['node_types']}")
+print(f"最大入度: {stats['max_in_degree']}")
+print(f"最大出度: {stats['max_out_degree']}")
+```

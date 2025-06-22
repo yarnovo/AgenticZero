@@ -18,6 +18,8 @@ AgenticZero图执行框架是一个用于构建复杂工作流的Python库。它
 
 ### 主要特性
 
+- **YAML配置系统**：完整的JSON Schema定义，支持双格式配置和语义化验证
+- **配置代理API**：提供高级API操作图配置，支持增删节点和边，实时验证
 - **清晰的节点层次结构**：任务节点、控制节点、异常节点
 - **AI智能集成**：支持任意AI Agent的接入
 - **并行执行支持**：Fork/Join模式
@@ -50,6 +52,64 @@ BaseNode (抽象基类)
 
 ## 快速开始
 
+### YAML配置验证
+
+使用新的Schema验证系统验证和操作图配置：
+
+```python
+from src.graph.schema import validate_graph_config
+from src.graph.config_proxy import GraphConfigProxy
+
+# 1. 验证配置
+config = {
+    "name": "示例工作流",
+    "nodes": [
+        {"id": "start", "type": "TaskNode", "name": "开始"},
+        {"id": "process", "type": "BranchControlNode", "name": "分支处理", 
+         "params": {"condition_func": "lambda x: 'high' if x > 10 else 'low'"}},
+        {"id": "end", "type": "TaskNode", "name": "结束"}
+    ],
+    "edges": [
+        {"from": "start", "to": "process"},
+        {"from": "process", "to": "end", "action": "high"},
+        {"from": "process", "to": "end", "action": "low"}
+    ],
+    "start_node": "start",
+    "end_nodes": ["end"]
+}
+
+valid, errors = validate_graph_config(config)
+if valid:
+    print("✅ 配置有效")
+else:
+    for error in errors:
+        print(f"❌ {error}")
+
+# 2. 使用配置代理
+proxy = GraphConfigProxy.create_empty("我的工作流", "演示配置代理")
+
+# 添加节点
+proxy.add_node("task1", "TaskNode", "任务1", "处理数据",
+               params={"func": "process_data"})
+proxy.add_node("task2", "TaskNode", "任务2", "保存结果")
+
+# 添加边
+proxy.add_edge("task1", "task2")
+
+# 设置起始和结束节点
+proxy.start_node = "task1"
+proxy.add_end_node("task2")
+
+# 验证和保存
+if proxy.is_valid():
+    proxy.save_to_file("workflow.yaml")
+    print("✅ 工作流已保存")
+
+# 获取统计信息
+stats = proxy.get_statistics()
+print(f"节点数: {stats['node_count']}, 边数: {stats['edge_count']}")
+```
+
 ### 运行测试
 
 ```bash
@@ -60,8 +120,14 @@ make test
 # 运行架构演示测试
 python -m src.graph.tests.test_architecture
 
-# 运行特定测试文件
-python -m pytest src/graph/tests/test_node_types.py -v
+# 运行Schema验证测试
+python -m pytest src/graph/tests/test_schema_validator.py -v
+
+# 运行配置代理测试
+python -m pytest src/graph/tests/test_config_proxy.py -v
+
+# 运行配置验证演示
+python src/graph/examples/schema_validation_demo.py
 ```
 
 ### 基础示例
@@ -263,33 +329,155 @@ executor.register_hook("node_start", on_node_start)
 executor.register_hook("node_complete", on_node_complete)
 ```
 
-### 配置解析
+### YAML配置系统
 
-支持从YAML文件加载图配置：
+新的配置系统支持Schema验证和双格式配置：
+
+#### 数组格式配置
 
 ```yaml
-name: my_workflow
+name: "数据处理工作流"
+description: "演示数组格式配置"
+version: "1.0"
 nodes:
   - id: start
     type: SequenceControlNode
     name: 开始节点
-  - id: process
+    description: "工作流入口"
+    params:
+      process_func: "lambda x: x"
+  - id: branch
+    type: BranchControlNode
+    name: 条件分支
+    params:
+      condition_func: "lambda x: 'high' if x > 10 else 'low'"
+  - id: end
     type: TaskNode
-    name: 处理节点
+    name: 结束节点
 edges:
   - from: start
-    to: process
+    to: branch
+    action: default
+    weight: 1.0
+  - from: branch
+    to: end
+    action: high
+  - from: branch
+    to: end
+    action: low
 start_node: start
-end_nodes: [process]
+end_nodes: [end]
+metadata:
+  author: "开发者"
+  category: "演示"
 ```
 
-```python
-from src.graph import load_graph_from_yaml
+#### 内联格式配置
 
-graph = load_graph_from_yaml("workflow.yaml")
+```yaml
+name: "数据处理工作流"
+description: "演示内联格式配置"
+start_node: start
+end_nodes: [end]
+start:
+  type: SequenceControlNode
+  name: 开始节点
+  description: "工作流入口"
+  params:
+    process_func: "lambda x: x"
+branch:
+  type: BranchControlNode
+  name: 条件分支
+  params:
+    condition_func: "lambda x: 'high' if x > 10 else 'low'"
+end:
+  type: TaskNode
+  name: 结束节点
+edges:
+  - from: start
+    to: branch
+  - from: branch
+    to: end
+    action: high
+  - from: branch
+    to: end
+    action: low
+```
+
+#### 配置验证和加载
+
+```python
+from src.graph.schema import validate_graph_config_file
+from src.graph.config_proxy import GraphConfigProxy
+
+# 验证YAML文件
+valid, errors = validate_graph_config_file("workflow.yaml")
+if not valid:
+    print("配置验证失败:")
+    for error in errors:
+        print(f"  - {error}")
+
+# 从文件加载配置代理
+proxy = GraphConfigProxy.from_file("workflow.yaml")
+
+# 转换为图对象
+from src.graph.core import Graph
+graph = Graph.from_dict(proxy.to_dict())
 ```
 
 ## API参考
+
+### 配置系统
+
+#### GraphConfigValidator
+
+YAML配置验证器。
+
+**方法**:
+- `validate(config: dict) -> tuple[bool, list[str]]`: 验证配置字典
+- `detect_format(config: dict) -> str`: 检测配置格式（array/inline）
+
+**便捷函数**:
+- `validate_graph_config(config: dict) -> tuple[bool, list[str]]`: 验证配置
+- `validate_graph_config_file(file_path: str) -> tuple[bool, list[str]]`: 验证文件
+
+#### GraphConfigProxy
+
+图配置代理对象，提供操作图配置的高级API。
+
+**创建方法**:
+- `create_empty(name: str, description: str = "") -> GraphConfigProxy`: 创建空图
+- `from_file(config_file: str) -> GraphConfigProxy`: 从文件创建
+- `from_dict(config: dict) -> GraphConfigProxy`: 从字典创建
+
+**节点操作**:
+- `add_node(node_id, node_type, name, description="", params=None, metadata=None) -> bool`: 添加节点
+- `remove_node(node_id: str) -> bool`: 删除节点
+- `update_node(node_id, name=None, description=None, params=None, metadata=None) -> bool`: 更新节点
+- `get_node(node_id: str) -> dict | None`: 获取节点
+- `has_node(node_id: str) -> bool`: 检查节点是否存在
+- `list_nodes() -> list[dict]`: 列出所有节点
+- `filter_nodes(node_type: str = None) -> list[dict]`: 过滤节点
+
+**边操作**:
+- `add_edge(from_node, to_node, action="default", weight=1.0, metadata=None) -> bool`: 添加边
+- `remove_edge(from_node, to_node, action="default") -> bool`: 删除边
+- `update_edge(from_node, to_node, action="default", new_weight=None, new_metadata=None) -> bool`: 更新边
+- `get_edge(from_node, to_node, action="default") -> dict | None`: 获取边
+- `has_edge(from_node, to_node, action="default") -> bool`: 检查边是否存在
+- `list_edges() -> list[dict]`: 列出所有边
+
+**验证和序列化**:
+- `validate() -> tuple[bool, list[str]]`: 验证配置
+- `is_valid() -> bool`: 检查是否有效
+- `to_dict() -> dict`: 导出为字典
+- `to_yaml(indent=2) -> str`: 导出为YAML字符串
+- `save_to_file(file_path: str)`: 保存到文件
+
+**高级操作**:
+- `clone() -> GraphConfigProxy`: 克隆代理
+- `merge(other, conflict_strategy="error") -> GraphConfigProxy`: 合并配置
+- `get_statistics() -> dict`: 获取统计信息
 
 ### 基础类
 
@@ -425,9 +613,26 @@ async def test_workflow():
 
 查看 `examples/` 目录获取更多示例：
 
+- `schema_validation_demo.py` - Schema验证和配置代理演示
 - `basic_workflow.py` - 基础工作流
 - `ai_workflow.py` - AI增强工作流
 - `parallel_workflow.py` - 并行执行和异常处理
+
+### Schema验证演示
+
+运行完整的配置系统演示：
+
+```bash
+python src/graph/examples/schema_validation_demo.py
+```
+
+该演示包括：
+- Schema验证功能（有效和无效配置）
+- 配置代理基础操作（创建、添加节点和边）
+- 高级操作（节点查询、更新、统计）
+- 序列化和合并功能
+- 错误处理演示
+- 文件验证功能
 
 ## 贡献指南
 

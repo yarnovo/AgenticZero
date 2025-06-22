@@ -361,7 +361,15 @@ class GraphConfigValidator:
 
         # 针对不同错误类型提供友好的错误信息
         if error.validator == "required":
-            missing_props = ", ".join(f"'{prop}'" for prop in error.validator_value)
+            try:
+                # 安全地处理可能的Unset类型
+                validator_value = error.validator_value
+                if isinstance(validator_value, list | tuple | set):
+                    missing_props = ", ".join(f"'{prop}'" for prop in validator_value)  # type: ignore
+                else:
+                    missing_props = str(validator_value)
+            except Exception:
+                missing_props = str(error.validator_value)
             return f"[{path}] 缺少必需字段: {missing_props}"
 
         elif error.validator == "type":
@@ -370,7 +378,15 @@ class GraphConfigValidator:
             return f"[{path}] 类型错误: 期望 {expected_type}，实际值为 {type(actual_value).__name__}: {actual_value}"
 
         elif error.validator == "enum":
-            valid_values = ", ".join(f"'{v}'" for v in error.validator_value)
+            try:
+                # 安全地处理可能的Unset类型
+                validator_value = error.validator_value
+                if isinstance(validator_value, list | tuple | set):
+                    valid_values = ", ".join(f"'{v}'" for v in validator_value)  # type: ignore
+                else:
+                    valid_values = str(validator_value)
+            except Exception:
+                valid_values = str(error.validator_value)
             return f"[{path}] 无效值 '{error.instance}'，有效值为: {valid_values}"
 
         elif error.validator == "minLength":
@@ -599,10 +615,7 @@ class GraphConfigValidator:
         elif node_type == "TimeoutNode":
             if "timeout_seconds" in params:
                 timeout_seconds = params["timeout_seconds"]
-                if (
-                    not isinstance(timeout_seconds, int | float)
-                    or timeout_seconds <= 0
-                ):
+                if not isinstance(timeout_seconds, int | float) or timeout_seconds <= 0:
                     errors.append(
                         f"超时节点 '{node_id}' 的 'timeout_seconds' 必须是正数"
                     )
