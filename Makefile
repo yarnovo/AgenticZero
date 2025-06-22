@@ -1,9 +1,9 @@
 .PHONY: help test lint type-check format format-check clean install dev-install all check
 
-# Default target
+# 默认目标
 .DEFAULT_GOAL := help
 
-# Help command
+# 帮助命令
 help:
 	@echo "Available commands:"
 	@echo "  make install       Install production dependencies"
@@ -17,53 +17,53 @@ help:
 	@echo "  make clean         Clean up cache and build files"
 	@echo "  make all           Run format, lint, type-check, and test"
 
-# Install dependencies
+# 安装依赖
 install:
 	uv sync --no-dev
 
 dev-install:
 	uv sync
 
-# Run tests
+# 运行测试
 test:
 	uv run pytest
 
-# Run tests with minimal output
+# 以最小输出运行测试
 test-quiet:
 	uv run pytest -q
 
-# Run specific test file
+# 运行特定测试文件
 test-file:
 	@read -p "Enter test file path: " filepath; \
 	uv run pytest $$filepath -v
 
-# Lint code
+# 代码检查
 lint:
 	uv run ruff check .
 
-# Lint and auto-fix
+# 代码检查并自动修复
 lint-fix:
 	uv run ruff check --fix .
 
-# Type check
+# 类型检查
 type-check:
 	uv run pyright
 
-# Format code
+# 格式化代码
 format:
 	uv run ruff format .
 
-# Check formatting without making changes
+# 检查格式化但不做更改
 format-check:
 	uv run ruff format --check .
 
-# Run all checks
+# 运行所有检查
 check: format-check lint type-check test
 
-# Run all formatting and checks
+# 运行所有格式化和检查
 all: format lint-fix type-check test
 
-# Clean up
+# 清理
 clean:
 	find . -type f -name '*.pyc' -delete
 	find . -type d -name '__pycache__' -delete
@@ -77,24 +77,24 @@ clean:
 	find . -type d -name 'build' -exec rm -rf {} +
 	find . -type d -name 'dist' -exec rm -rf {} +
 
-# Watch mode for tests
+# 测试监听模式
 test-watch:
 	uv run pytest-watch
 
-# Run tests with verbose output
+# 以详细输出运行测试
 test-verbose:
 	uv run pytest -vv
 
-# Run only fast tests
+# 仅运行快速测试
 test-fast:
 	uv run pytest -m "not slow"
 
-# Run coverage report
+# 运行覆盖率报告
 coverage:
 	uv run pytest --cov-report=html
 	@echo "Coverage report generated in htmlcov/index.html"
 
-# Open coverage report in browser (Linux/WSL)
+# 在浏览器中打开覆盖率报告 (Linux/WSL)
 coverage-open: coverage
 	@if command -v xdg-open > /dev/null; then \
 		xdg-open htmlcov/index.html; \
