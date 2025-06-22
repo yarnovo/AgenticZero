@@ -50,6 +50,20 @@ BaseNode (抽象基类)
 
 ## 快速开始
 
+### 运行测试
+
+```bash
+# 运行所有测试
+cd /path/to/AgenticZero
+make test
+
+# 运行架构演示测试
+python -m src.graph.tests.test_architecture
+
+# 运行特定测试文件
+python -m pytest src/graph/tests/test_node_types.py -v
+```
+
 ### 基础示例
 
 ```python

@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """
-测试新架构的脚本
+测试图架构功能
 
-演示新架构的基本功能
+演示图架构的核心功能
 """
 
 import asyncio
-import sys
-
-sys.path.insert(0, ".")
 
 from src.graph import (
     BranchControlNode,
@@ -206,7 +203,7 @@ async def test_serialization():
 
 async def main():
     """主函数"""
-    print("\n开始测试新架构...\n")
+    print("\n开始测试图架构...\n")
 
     try:
         await test_basic_workflow()
@@ -215,7 +212,7 @@ async def main():
         await test_exception_handling()
         await test_serialization()
 
-        print("✅ 所有测试通过！新架构工作正常。")
+        print("✅ 所有测试通过！图架构工作正常。")
 
     except Exception as e:
         print(f"❌ 测试失败: {e}")
