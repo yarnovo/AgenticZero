@@ -266,9 +266,7 @@ class Graph:
         """获取边"""
         return self.edges.get(from_id, {}).get(action)
 
-    def get_next_node_id(
-        self, current_id: str, action: str = "default"
-    ) -> str | None:
+    def get_next_node_id(self, current_id: str, action: str = "default") -> str | None:
         """根据当前节点和动作获取下一个节点ID"""
         edge = self.get_edge(current_id, action)
         return edge.to_id if edge else None

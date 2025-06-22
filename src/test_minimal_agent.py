@@ -3,7 +3,6 @@
 This script tests the basic functionality without requiring actual MCP servers.
 """
 
-import asyncio
 import sys
 from pathlib import Path
 

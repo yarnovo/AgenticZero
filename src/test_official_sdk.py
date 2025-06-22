@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """测试使用官方 SDK 的最小化智能体实现。"""
 
-import asyncio
 import sys
 from pathlib import Path
 
@@ -23,17 +22,17 @@ async def test_sdk_imports():
     try:
         # 测试 MCP SDK
         import mcp
-        import mcp.client.stdio
+        import mcp.client.stdio  # noqa: F401
 
         print("✓ MCP SDK 导入成功")
 
         # 测试 OpenAI SDK
-        import openai
+        import openai  # noqa: F401
 
         print("✓ OpenAI SDK 导入成功")
 
         # 测试 Anthropic SDK
-        import anthropic
+        import anthropic  # noqa: F401
 
         print("✓ Anthropic SDK 导入成功")
 

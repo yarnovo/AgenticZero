@@ -4,7 +4,6 @@
 测试各种图功能和节点类型
 """
 
-import asyncio
 import os
 import sys
 
