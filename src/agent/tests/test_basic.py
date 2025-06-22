@@ -2,7 +2,7 @@
 
 import pytest
 
-from agentic import AgentSettings, LLMSettings, MCPServerSettings
+from src.agent import AgentSettings, LLMSettings, MCPServerSettings
 
 
 @pytest.mark.unit

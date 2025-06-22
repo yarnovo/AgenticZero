@@ -1,4 +1,4 @@
-# Agentic 智能体框架
+# Agent 智能体框架
 
 一个基于自驱动架构的 Python 智能体框架，支持与大型语言模型和 MCP（模型上下文协议）服务器的无缝集成。
 
@@ -18,7 +18,7 @@
 
 ```python
 # 直接从项目内部引用
-from src.agentic import Agent, AgentSettings, LLMSettings
+from src.agent import Agent, AgentSettings, LLMSettings
 ```
 
 ### 环境要求
@@ -35,7 +35,7 @@ from src.agentic import Agent, AgentSettings, LLMSettings
 
 ```python
 import asyncio
-from agentic import Agent, AgentSettings, LLMSettings
+from agent import Agent, AgentSettings, LLMSettings
 
 async def main():
     # 配置智能体
@@ -61,7 +61,7 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from agentic import Agent, AgentSettings, LLMSettings, MCPServerSettings
+from agent import Agent, AgentSettings, LLMSettings, MCPServerSettings
 
 async def main():
     settings = AgentSettings(
@@ -97,7 +97,7 @@ asyncio.run(main())
 
 ```python
 import asyncio
-from agentic import Agent, AgentSettings, LLMSettings
+from agent import Agent, AgentSettings, LLMSettings
 
 async def main():
     settings = AgentSettings(
@@ -215,7 +215,7 @@ flowchart TD
 框架支持自定义组件的依赖注入：
 
 ```python
-from agentic import (
+from agent import (
     Agent, AgentSettings, 
     ModelProvider, LLMSessionInterface,
     MessageHistoryManager

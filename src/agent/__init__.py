@@ -1,4 +1,4 @@
-"""Agentic 智能体框架 - 自驱动智能体实现。"""
+"""Agent 智能体框架 - 自驱动智能体实现。"""
 
 from .agent import Agent, AgenticAgent, MinimalAgent
 from .core_engine import CoreEngine
