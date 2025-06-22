@@ -224,6 +224,8 @@ async def main():
     graph2 = EnhancedGraph("interruptible_workflow")
 
     # 添加一个会"失败"的节点
+    from src.graph.node_types import TaskNode
+
     class InterruptibleTask(TaskNode):
         def __init__(self, node_id: str, name: str, fail_on_run: int = 1):
             super().__init__(node_id, name)

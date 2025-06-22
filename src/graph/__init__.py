@@ -57,6 +57,9 @@ from .config_parser import (
     load_graph_from_dict,
     load_graph_from_yaml,
 )
+
+# Schema验证和配置代理
+from .config_proxy import GraphConfigProxy
 from .core import BaseNode, Edge, Graph, NodeStatus
 
 # 增强功能
@@ -81,6 +84,12 @@ from .node_types import (
     ExceptionNode,
     NodeCategory,
     TaskNode,
+)
+from .schema import (
+    GraphConfigSchema,
+    GraphConfigValidator,
+    validate_graph_config,
+    validate_graph_config_file,
 )
 
 __all__ = [
@@ -132,6 +141,12 @@ __all__ = [
     "GraphConfigParser",
     "load_graph_from_yaml",
     "load_graph_from_dict",
+    # Schema验证和配置代理
+    "GraphConfigSchema",
+    "GraphConfigValidator",
+    "GraphConfigProxy",
+    "validate_graph_config",
+    "validate_graph_config_file",
 ]
 
 # 版本信息

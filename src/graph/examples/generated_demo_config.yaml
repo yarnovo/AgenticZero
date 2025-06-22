@@ -1,0 +1,88 @@
+description: 配置代理演示图
+edges:
+- action: default
+  from: input
+  metadata:
+    priority: high
+  to: branch
+  weight: 2.0
+- action: high
+  from: branch
+  to: high_path
+  weight: 1.0
+- action: low
+  from: branch
+  to: low_path
+  weight: 1.0
+- action: default
+  from: high_path
+  to: output
+  weight: 1.0
+- action: default
+  from: low_path
+  to: output
+  weight: 1.0
+- action: default
+  from: logger
+  to: validator
+  weight: 1.0
+end_nodes:
+- output
+metadata:
+  complexity: 中等
+  created_by: 演示程序
+  estimated_runtime: 5秒
+name: 演示工作流
+nodes:
+- description: 处理输入数据
+  id: input
+  metadata:
+    category: 输入
+  name: 输入处理
+  params:
+    process_func: 'lambda x: {''input'': x}'
+  type: SequenceControlNode
+- description: 根据条件选择路径
+  id: branch
+  metadata:
+    category: 控制
+  name: 条件分支
+  params:
+    condition_func: 'lambda x: ''high'' if x.get(''input'', 0) > 10 else ''low'''
+  type: BranchControlNode
+- description: 处理高值情况
+  id: high_path
+  name: 高值处理
+  params:
+    process_func: 'lambda x: {''result'': x[''input''] * 0.9, ''path'': ''high''}'
+  type: TaskNode
+- description: 处理低值情况
+  id: low_path
+  name: 低值处理
+  params:
+    process_func: 'lambda x: {''result'': x[''input''] * 1.2, ''path'': ''low''}'
+  type: TaskNode
+- description: 更新的输出节点描述
+  id: output
+  metadata:
+    updated: true
+    version: '2.0'
+  name: 结果输出
+  params:
+    process_func: 'lambda x: f"最终结果: {x[''result'']} (路径: {x[''path'']})"'
+  type: TaskNode
+- description: 记录处理日志
+  id: logger
+  name: 日志记录
+  params:
+    log_level: INFO
+  type: TaskNode
+- description: 验证输出数据
+  id: validator
+  name: 数据验证
+  params:
+    validation_rules:
+    - not_null
+    - positive
+  type: TaskNode
+start_node: input

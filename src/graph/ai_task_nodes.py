@@ -128,14 +128,14 @@ class AIAnalyzer(AITaskNode):
         """使用AI进行分析"""
         prompt = f"""
         请对以下数据进行{self.analysis_type}分析：
-        
+
         数据: {input_data}
-        
+
         请提供：
         1. 主要发现
         2. 关键洞察
         3. 建议行动
-        
+
         返回JSON格式的分析结果。
         """
 
@@ -151,7 +151,7 @@ class AIAnalyzer(AITaskNode):
                 "input": input_data,
                 "findings": result,
             }
-        except:
+        except Exception:
             # 如果解析失败，返回原始文本
             return {
                 "analysis_type": self.analysis_type,
@@ -192,21 +192,21 @@ class AIGenerator(AITaskNode):
             prompt = f"""
             基于以下需求生成代码：
             需求: {input_data}
-            
+
             请生成完整、可运行的代码，并添加必要的注释。
             """
         elif self.generation_type == "plan":
             prompt = f"""
             基于以下目标生成详细计划：
             目标: {input_data}
-            
+
             请生成结构化的执行计划，包括步骤、依赖和预期结果。
             """
         else:  # text
             prompt = f"""
             基于以下输入生成文本内容：
             输入: {input_data}
-            
+
             请生成高质量、相关的文本内容。
             """
 

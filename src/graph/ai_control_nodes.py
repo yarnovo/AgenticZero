@@ -135,7 +135,7 @@ class AIControlNode(ControlNode):
         prompt = f"""
         基于当前执行结果，决定下一步动作：
         执行结果: {self.result}
-        
+
         请返回下一步的动作标识，如果继续正常流程请返回'continue'，
         如果需要特殊处理请返回相应的动作标识。
         """
@@ -197,10 +197,10 @@ class AIRouter(AIControlNode):
         """分析输入并选择路由"""
         prompt = f"""
         作为智能路由器，请分析输入并选择最合适的路由：
-        
+
         输入数据: {input_data}
         可用路由: {self.routes}
-        
+
         请基于语义理解选择最匹配的路由，并说明选择理由。
         返回格式: {{"route": "选择的路由", "reason": "选择理由", "confidence": 0.9}}
         """
@@ -220,7 +220,7 @@ class AIRouter(AIControlNode):
                 "confidence": result.get("confidence", 0.5),
                 "input": input_data,
             }
-        except:
+        except Exception:
             # 如果解析失败，使用默认路由
             return {
                 "selected_route": self.routes[0] if self.routes else "default",
