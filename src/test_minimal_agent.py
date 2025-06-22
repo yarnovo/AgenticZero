@@ -7,12 +7,16 @@ import asyncio
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from minimal_agentic import AgentConfig, MinimalAgent
 
 
+@pytest.mark.asyncio
+@pytest.mark.integration
 async def test_basic_functionality():
     """Test basic agent creation and configuration."""
     print("Test 1: Basic agent creation")
@@ -42,6 +46,8 @@ async def test_basic_functionality():
     print()
 
 
+@pytest.mark.asyncio
+@pytest.mark.unit
 async def test_config_from_dict():
     """Test creating configuration from dictionary."""
     print("Test 2: Configuration from dictionary")
@@ -72,6 +78,8 @@ async def test_config_from_dict():
     print()
 
 
+@pytest.mark.asyncio
+@pytest.mark.unit
 async def test_agent_initialization():
     """Test agent initialization without actual connections."""
     print("Test 3: Agent initialization")
@@ -107,28 +115,6 @@ async def test_agent_initialization():
     print()
 
 
-def main():
-    """Run all tests."""
-    print("=" * 50)
-    print("Minimal Agentic Module Tests")
-    print("=" * 50)
-    print()
-
-    # Run tests
-    asyncio.run(test_basic_functionality())
-    asyncio.run(test_config_from_dict())
-    asyncio.run(test_agent_initialization())
-
-    print("=" * 50)
-    print("All tests passed! ✓")
-    print("=" * 50)
-
-    print("\nNote: These are basic unit tests.")
-    print("For full integration testing, you'll need:")
-    print("- Valid API keys for OpenAI/Anthropic")
-    print("- MCP servers installed and running")
-    print("\nSee example.py for integration examples.")
-
-
-if __name__ == "__main__":
-    main()
+# 移除了 main() 函数和 if __name__ == "__main__" 块
+# 这些测试现在只能通过 pytest 运行
+# 如果需要单独运行，使用: pytest src/test_minimal_agent.py -v

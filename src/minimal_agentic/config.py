@@ -47,9 +47,14 @@ class AgentConfig(BaseModel):
         return cls(**config_dict)
 
     def add_mcp_server(
-        self, name: str, command: str, args: list[str] | None = None,
+        self,
+        name: str,
+        command: str,
+        args: list[str] | None = None,
     ) -> None:
         """添加 MCP 服务器配置。"""
         self.mcp_servers[name] = MCPServerConfig(
-            name=name, command=command, args=args or [],
+            name=name,
+            command=command,
+            args=args or [],
         )

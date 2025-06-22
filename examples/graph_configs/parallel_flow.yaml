@@ -1,0 +1,79 @@
+# 并行执行流程图配置示例
+name: "并行处理流程"
+
+nodes:
+  - id: start
+    type: SimpleNode
+    name: "开始"
+
+  - id: split
+    type: SimpleNode
+    name: "分发任务"
+    params:
+      message: "准备并行处理"
+
+  # 并行任务组
+  - id: task1
+    type: DelayNode
+    name: "任务1"
+    params:
+      delay: 1.0
+      message: "执行任务1"
+
+  - id: task2
+    type: DelayNode
+    name: "任务2"
+    params:
+      delay: 2.0
+      message: "执行任务2"
+
+  - id: task3
+    type: DelayNode
+    name: "任务3"
+    params:
+      delay: 0.5
+      message: "执行任务3"
+
+  # 结果收集
+  - id: collect
+    type: AccumulatorNode
+    name: "收集结果"
+    params:
+      wait_for: 3  # 等待3个输入
+
+  - id: end
+    type: SimpleNode
+    name: "结束"
+
+edges:
+  - from: start
+    to: split
+    
+  # 分发到并行任务
+  - from: split
+    to: task1
+    action: "task1"
+    
+  - from: split
+    to: task2
+    action: "task2"
+    
+  - from: split
+    to: task3
+    action: "task3"
+    
+  # 收集结果
+  - from: task1
+    to: collect
+    
+  - from: task2
+    to: collect
+    
+  - from: task3
+    to: collect
+    
+  - from: collect
+    to: end
+
+start_node: start
+end_nodes: [end]

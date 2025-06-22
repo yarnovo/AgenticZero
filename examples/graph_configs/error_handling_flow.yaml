@@ -1,0 +1,85 @@
+# 错误处理流程图配置示例
+name: "错误处理流程"
+
+nodes:
+  - id: start
+    type: SimpleNode
+    name: "开始"
+
+  - id: risky_operation
+    type: RandomChoiceNode
+    name: "风险操作"
+    params:
+      choices: ["success", "error"]
+      weights: [0.7, 0.3]  # 70%成功，30%失败
+
+  - id: success_handler
+    type: LoggingNode
+    name: "成功处理"
+    params:
+      level: "info"
+      message: "操作成功完成"
+
+  - id: error_handler
+    type: ErrorNode
+    name: "错误处理"
+    params:
+      error_message: "操作失败，进行错误处理"
+      recover: true  # 允许恢复
+
+  - id: retry_decision
+    type: ConditionalNode
+    name: "重试决策"
+    params:
+      condition_type: "retry_check"
+      max_retries: 3
+
+  - id: final_error
+    type: LoggingNode
+    name: "最终错误"
+    params:
+      level: "error"
+      message: "超过最大重试次数"
+
+  - id: cleanup
+    type: SimpleNode
+    name: "清理资源"
+
+  - id: end
+    type: SimpleNode
+    name: "结束"
+
+edges:
+  - from: start
+    to: risky_operation
+    
+  - from: risky_operation
+    to: success_handler
+    action: "success"
+    
+  - from: risky_operation
+    to: error_handler
+    action: "error"
+    
+  - from: error_handler
+    to: retry_decision
+    
+  - from: retry_decision
+    to: risky_operation
+    action: "retry"
+    
+  - from: retry_decision
+    to: final_error
+    action: "stop"
+    
+  - from: success_handler
+    to: cleanup
+    
+  - from: final_error
+    to: cleanup
+    
+  - from: cleanup
+    to: end
+
+start_node: start
+end_nodes: [end]

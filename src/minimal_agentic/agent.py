@@ -94,7 +94,8 @@ class MinimalAgent:
             await self.close()
 
     def _format_tools_for_llm(
-        self, tools: list[dict[str, Any]],
+        self,
+        tools: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """为 LLM 格式化 MCP 工具。"""
         formatted_tools = []
@@ -175,7 +176,8 @@ class MinimalAgent:
 
                 try:
                     result = await self.mcp_client.call_tool(
-                        tool_name=tool_call.name, arguments=tool_call.arguments,
+                        tool_name=tool_call.name,
+                        arguments=tool_call.arguments,
                     )
 
                     formatted_result = self._format_tool_result(result)

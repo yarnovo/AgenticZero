@@ -92,19 +92,24 @@ class OpenAIProvider(LLMProvider):
                 )
 
         return LLMResponse(
-            content=content, tool_calls=tool_calls, raw_response=response,
+            content=content,
+            tool_calls=tool_calls,
+            raw_response=response,
         )
 
 
 class AnthropicProvider(LLMProvider):
     """Anthropic Claude LLM 提供商实现。"""
 
-    def __init__(self, api_key: str, model: str = "claude-3-opus-20240229", **kwargs) -> None:
+    def __init__(
+        self, api_key: str, model: str = "claude-3-opus-20240229", **kwargs
+    ) -> None:
         super().__init__(api_key, model, **kwargs)
         self.client = AsyncAnthropic(api_key=api_key)
 
     def _convert_tools_to_anthropic_format(
-        self, tools: list[dict[str, Any]],
+        self,
+        tools: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """将 OpenAI 工具格式转换为 Anthropic 格式。"""
         anthropic_tools = []
@@ -160,12 +165,17 @@ class AnthropicProvider(LLMProvider):
                 )
 
         return LLMResponse(
-            content=content, tool_calls=tool_calls, raw_response=response,
+            content=content,
+            tool_calls=tool_calls,
+            raw_response=response,
         )
 
 
 def create_llm_provider(
-    provider_type: str, api_key: str, model: str, **kwargs,
+    provider_type: str,
+    api_key: str,
+    model: str,
+    **kwargs,
 ) -> LLMProvider:
     """创建 LLM 提供商的工厂函数。"""
     providers = {

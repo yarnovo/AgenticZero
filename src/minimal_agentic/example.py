@@ -99,7 +99,9 @@ class MockMCPClient(MCPClientInterface):
         ]
 
     async def call_tool(
-        self, tool_name: str, arguments: dict[str, Any] | None = None,
+        self,
+        tool_name: str,
+        arguments: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         if tool_name == "mock_get_time":
             return {
@@ -138,7 +140,9 @@ async def dependency_injection_example() -> None:
 
     # 使用依赖注入创建智能体
     agent = MinimalAgent(
-        config=config, mcp_client=custom_mcp_client, llm_provider=custom_llm_provider,
+        config=config,
+        mcp_client=custom_mcp_client,
+        llm_provider=custom_llm_provider,
     )
 
     async with agent.connect() as connected_agent:
@@ -206,7 +210,9 @@ async def minimal_example() -> None:
 
     # 添加单个 MCP 服务器
     config.mcp_servers["fetch"] = MCPServerConfig(
-        name="fetch", command="uvx", args=["mcp-server-fetch"],
+        name="fetch",
+        command="uvx",
+        args=["mcp-server-fetch"],
     )
 
     async with MinimalAgent(config).connect() as agent:

@@ -1,0 +1,62 @@
+# 条件分支流程图配置示例
+name: "条件分支流程"
+
+nodes:
+  - id: start
+    type: SimpleNode
+    name: "开始"
+    params:
+      message: "评估数值"
+
+  - id: evaluate
+    type: ConditionalNode
+    name: "条件判断"
+    params:
+      condition_type: "value_check"
+      threshold: 50
+
+  - id: high_path
+    type: LoggingNode
+    name: "高值路径"
+    params:
+      level: "info"
+      message: "数值大于阈值"
+
+  - id: low_path
+    type: LoggingNode
+    name: "低值路径"
+    params:
+      level: "warning"
+      message: "数值小于等于阈值"
+
+  - id: merge
+    type: SimpleNode
+    name: "合并节点"
+
+  - id: end
+    type: SimpleNode
+    name: "结束"
+
+edges:
+  - from: start
+    to: evaluate
+    
+  - from: evaluate
+    to: high_path
+    action: "true"
+    
+  - from: evaluate
+    to: low_path
+    action: "false"
+    
+  - from: high_path
+    to: merge
+    
+  - from: low_path
+    to: merge
+    
+  - from: merge
+    to: end
+
+start_node: start
+end_nodes: [end]

@@ -1,0 +1,63 @@
+# 函数节点流程图配置示例
+name: "函数调用流程"
+
+# 自定义节点类型（如果需要）
+custom_nodes:
+  # CustomProcessor: "my_module.processors:CustomProcessor"
+
+nodes:
+  - id: start
+    type: SimpleNode
+    name: "开始"
+
+  - id: prepare_data
+    type: FunctionNode
+    name: "准备数据"
+    params:
+      function: "examples.graph_functions:prepare_data"
+      
+  - id: process_data
+    type: FunctionNode
+    name: "处理数据"
+    params:
+      function: "examples.graph_functions:process_data"
+      
+  - id: validate_result
+    type: FunctionNode
+    name: "验证结果"
+    params:
+      function: "examples.graph_functions:validate_result"
+      
+  - id: save_result
+    type: FunctionNode
+    name: "保存结果"
+    params:
+      function: "examples.graph_functions:save_result"
+
+  - id: end
+    type: SimpleNode
+    name: "结束"
+
+edges:
+  - from: start
+    to: prepare_data
+    
+  - from: prepare_data
+    to: process_data
+    
+  - from: process_data
+    to: validate_result
+    
+  - from: validate_result
+    to: save_result
+    action: "valid"
+    
+  - from: validate_result
+    to: end
+    action: "invalid"
+    
+  - from: save_result
+    to: end
+
+start_node: start
+end_nodes: [end]

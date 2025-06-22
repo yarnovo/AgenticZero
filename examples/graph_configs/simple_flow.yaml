@@ -1,0 +1,40 @@
+# 简单的顺序流程图配置示例
+name: "简单顺序流程"
+
+nodes:
+  - id: start
+    type: SimpleNode
+    name: "开始节点"
+    params:
+      message: "流程开始"
+
+  - id: process
+    type: DataProcessorNode
+    name: "数据处理"
+    params:
+      process_type: "uppercase"
+
+  - id: log
+    type: LoggingNode
+    name: "日志记录"
+    params:
+      level: "info"
+
+  - id: end
+    type: SimpleNode
+    name: "结束节点"
+    params:
+      message: "流程结束"
+
+edges:
+  - from: start
+    to: process
+    
+  - from: process
+    to: log
+    
+  - from: log
+    to: end
+
+start_node: start
+end_nodes: [end]

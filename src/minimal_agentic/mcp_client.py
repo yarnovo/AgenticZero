@@ -30,7 +30,9 @@ class MCPServerConnection:
 
         # 创建服务器参数
         server_params = StdioServerParameters(
-            command=self.config.command, args=self.config.args, env=self.config.env,
+            command=self.config.command,
+            args=self.config.args,
+            env=self.config.env,
         )
 
         # 使用官方 SDK 创建客户端
@@ -61,7 +63,9 @@ class MCPServerConnection:
         return result.tools
 
     async def call_tool(
-        self, name: str, arguments: dict[str, Any] | None = None,
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
     ) -> CallToolResult:
         """调用服务器上的工具。"""
         if not self.session:
@@ -121,7 +125,9 @@ class DefaultMCPClient(MCPClientInterface):
         return all_tools
 
     async def call_tool(
-        self, tool_name: str, arguments: dict[str, Any] | None = None,
+        self,
+        tool_name: str,
+        arguments: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """通过命名空间名称调用工具。"""
         # 提取服务器名称和工具名称

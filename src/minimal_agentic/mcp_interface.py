@@ -30,7 +30,9 @@ class MCPClientInterface(ABC):
 
     @abstractmethod
     async def call_tool(
-        self, tool_name: str, arguments: dict[str, Any] | None = None,
+        self,
+        tool_name: str,
+        arguments: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """调用指定的工具。
 

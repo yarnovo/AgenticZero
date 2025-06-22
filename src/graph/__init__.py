@@ -6,8 +6,10 @@
 - 图的遍历和执行
 - 条件分支和循环
 - 数据在节点间的传递
+- 基于 YAML 的配置解析
 """
 
+from .config_parser import GraphConfigParser, load_graph_from_dict, load_graph_from_yaml
 from .core import BaseNode, Edge, Graph, NodeStatus
 from .executor import ExecutionContext, GraphExecutor
 from .nodes import (
@@ -41,4 +43,8 @@ __all__ = [
     "RandomChoiceNode",
     "AccumulatorNode",
     "FunctionNode",
+    # 配置解析
+    "GraphConfigParser",
+    "load_graph_from_yaml",
+    "load_graph_from_dict",
 ]
