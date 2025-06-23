@@ -73,12 +73,6 @@ class GraphConfigParser:
         "AIAnalyzer": AIAnalyzer,
         "AIGenerator": AIGenerator,
         "AIEvaluator": AIEvaluator,
-        # 保留原有名称的兼容性映射
-        "SequenceNode": SequenceControlNode,
-        "BranchNode": BranchControlNode,
-        "MergeNode": MergeControlNode,
-        "ForkNode": ForkControlNode,
-        "JoinNode": JoinControlNode,
     }
 
     def __init__(self):

@@ -5,9 +5,12 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from .core_engine import CoreEngine
+from .internal_mcp_client import InternalMCPClient
 from .llm_session_manager import LLMSessionManager
 from .mcp_client_factory import MCPClientFactory
 from .mcp_session_manager import MCPSessionManager
+from .memory_manager import MemoryManager
+from .memory_mcp_server import MemoryMCPServer
 from .message_history_manager import MessageHistoryManager
 from .model_provider import ModelProviderFactory
 from .session_context_manager import SessionContextManager
@@ -67,8 +70,13 @@ class Agent:
         else:
             history_manager = MessageHistoryManager.create_memory_manager()
 
-        # 创建会话上下文管理器
-        self.context_manager = SessionContextManager(history_manager)
+        # 创建记忆管理器
+        self.memory_manager = MemoryManager.create_memory_manager()
+
+        # 创建会话上下文管理器，注入记忆管理器
+        self.context_manager = SessionContextManager(
+            history_manager=history_manager, memory_manager=self.memory_manager
+        )
 
         # 创建核心引擎
         self.core_engine = CoreEngine(
@@ -85,7 +93,10 @@ class Agent:
         # 初始化核心引擎
         await self.core_engine.initialize()
 
-        # 添加MCP服务器
+        # 添加内置的记忆MCP服务器
+        await self._add_internal_memory_server()
+
+        # 添加用户配置的MCP服务器
         for server_name, server_config in self.config.mcp_servers.items():
             await self.mcp_session_manager.add_server(server_name, server_config)
 
@@ -197,7 +208,29 @@ class Agent:
         """
         return await self.context_manager.list_contexts()
 
+    async def _add_internal_memory_server(self) -> None:
+        """添加内置的记忆MCP服务器。"""
+        # 创建记忆MCP服务器实例
+        memory_server = MemoryMCPServer(self.memory_manager)
 
-# 向后兼容的别名
-AgenticAgent = Agent
-MinimalAgent = Agent
+        # 创建内部MCP客户端
+        internal_client = InternalMCPClient(memory_server)
+
+        # 使用特殊配置添加到MCP会话管理器
+        from .settings import MCPServerSettings
+
+        internal_config = MCPServerSettings(
+            name="memory",
+            command="internal:memory",
+            args=[],
+            env={},
+        )
+
+        # 直接创建会话并添加
+        from .mcp_session_manager import MCPSession
+
+        session = MCPSession("memory", internal_config, internal_client)
+        await session.connect()
+        self.mcp_session_manager.sessions["memory"] = session
+
+        logger.info("已添加内置记忆MCP服务器")

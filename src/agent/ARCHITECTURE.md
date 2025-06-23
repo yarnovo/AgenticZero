@@ -43,6 +43,7 @@ graph TB
     subgraph "数据管理层"
         E[Context Manager]
         F[History Manager]
+        I[Memory Manager]
     end
     
     subgraph "适配器层"
@@ -55,6 +56,7 @@ graph TB
     B --> D
     B --> E
     E --> F
+    E --> I
     C --> G
     D --> H
 ```
@@ -72,11 +74,13 @@ graph TD
     LLMSessionManager --> ModelProvider[Model Provider]
     MCPSessionManager --> MCPClient[MCP Client]
     SessionContextManager --> MessageHistoryManager[Message History Manager]
+    SessionContextManager --> MemoryManager[Memory Manager]
     
     ModelProvider --> OpenAI[OpenAI Provider]
     ModelProvider --> Anthropic[Anthropic Provider]
     
     MCPClient --> MCPServers[MCP Servers]
+    MCPSessionManager --> InternalMemoryServer[Internal Memory MCP Server]
 ```
 
 ## 核心组件详解
@@ -134,13 +138,15 @@ async def process_input(
 
 **职责**：
 - 管理当前会话的状态信息
-- 协调消息历史管理器
+- 协调消息历史管理器和记忆管理器
 - 实现智能上下文截断
+- 注入相关记忆到对话上下文
 
 **核心功能**：
 - **上下文截断**：当消息过多时智能保留重要信息
 - **元数据管理**：支持自定义会话元数据
 - **状态持久化**：与历史管理器协同实现状态持久化
+- **记忆集成**：自动将相关记忆作为系统消息注入上下文
 
 ### 5. Message History Manager（消息历史管理）
 
@@ -153,7 +159,27 @@ async def process_input(
 - **内存存储**：适合临时会话和快速原型
 - **文件存储**：支持长期对话历史保存
 
-### 6. Model Provider（模型提供商）
+### 6. Memory Manager（记忆管理器）
+
+**职责**：
+- 管理智能体的长期和短期记忆
+- 提供记忆的存储、搜索和检索功能
+- 实现记忆的自动整合和遗忘机制
+- 作为内置MCP服务提供记忆工具
+
+**记忆类型**：
+- **SHORT_TERM**：短期记忆，临时信息
+- **LONG_TERM**：长期记忆，持久信息
+- **EPISODIC**：情景记忆，特定事件
+- **SEMANTIC**：语义记忆，概念知识
+
+**核心功能**：
+- **记忆存储**：支持不同类型和重要性的记忆
+- **智能搜索**：基于相关性搜索记忆
+- **自动整合**：将重要短期记忆转为长期记忆
+- **遗忘机制**：基于时间和重要性清理旧记忆
+
+### 7. Model Provider（模型提供商）
 
 **职责**：
 - 抽象不同大模型提供商的差异
@@ -175,12 +201,17 @@ flowchart TD
     B --> C[CoreEngine.process_input]
     C --> D[SessionContextManager.get_context]
     D --> E[MessageHistoryManager.get_history]
+    D --> M[MemoryManager.get_relevant_memories]
     E --> F[LLMSessionManager.chat]
+    M --> F
     F --> G[ModelProvider.create_session]
     G --> H[LLM API 调用]
     H --> I{响应解析和工具检测}
     I -->|有工具调用| J[MCPSessionManager.call_tool]
-    J --> K[结果整合和上下文更新]
+    J -->|记忆工具| N[Memory MCP Server]
+    J -->|其他工具| O[External MCP Servers]
+    N --> K[结果整合和上下文更新]
+    O --> K
     I -->|无工具调用| K
     K --> L[返回最终响应]
 ```
@@ -194,6 +225,9 @@ graph LR
         A2[message_history: MessageHistory对象]
         A3[metadata: 自定义元数据]
         A4[max_context_length: 上下文长度限制]
+        A5[memory_manager: 记忆管理器引用]
+        A6[enable_memory: 记忆功能开关]
+        A7[memory_context_size: 记忆上下文大小]
     end
     
     subgraph MessageHistory
@@ -258,6 +292,28 @@ class CustomMCPClient(MCPClientInterface):
     async def call_tool(self, tool_name: str, arguments: dict) -> dict:
         # 自定义工具调用逻辑
         pass
+```
+
+### 4. 内置MCP服务扩展
+
+```python
+# 创建自定义的内置MCP服务
+class CustomInternalMCPServer:
+    def __init__(self, agent_component):
+        self.component = agent_component
+    
+    async def list_tools(self) -> list[Tool]:
+        # 返回工具列表
+        pass
+    
+    async def call_tool(self, name: str, arguments: dict) -> list[Content]:
+        # 处理工具调用
+        pass
+
+# 在Agent初始化时添加内置服务
+internal_server = CustomInternalMCPServer(custom_component)
+internal_client = InternalMCPClient(internal_server)
+# 添加到MCP会话管理器
 ```
 
 ## 性能优化设计

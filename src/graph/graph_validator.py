@@ -242,7 +242,7 @@ class GraphValidator:
         for node_id, node in graph.nodes.items():
             node_type = type(node).__name__
 
-            if node_type in ["BranchControlNode", "BranchNode"]:
+            if node_type == "BranchControlNode":
                 outgoing_edges = graph.get_outgoing_edges(node_id)
                 if len(outgoing_edges) < 2:
                     self.errors.append(
@@ -263,14 +263,14 @@ class GraphValidator:
                         f"分叉节点 '{node_id}' 的出边数量({len(outgoing_edges)})与fork_count({node.fork_count})不匹配"
                     )
 
-            elif node_type in ["JoinControlNode", "JoinNode"]:
+            elif node_type == "JoinControlNode":
                 incoming_edges = graph.get_incoming_edges(node_id)
                 if len(incoming_edges) < 2:
                     self.warnings.append(
                         f"汇聚节点 '{node_id}' 应该有多条入边，当前只有 {len(incoming_edges)} 条"
                     )
 
-            elif node_type in ["MergeControlNode", "MergeNode"]:
+            elif node_type == "MergeControlNode":
                 incoming_edges = graph.get_incoming_edges(node_id)
                 if len(incoming_edges) < 2:
                     self.warnings.append(

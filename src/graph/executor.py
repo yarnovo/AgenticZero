@@ -39,7 +39,7 @@ class ExecutionContext:
         self.node_inputs: dict[str, Any] = {}  # 记录每个节点的输入
         self.node_outputs: dict[str, Any] = {}  # 记录每个节点的输出
 
-        # 为了与 ResumableExecutor 兼容
+        # 执行状态跟踪
         self.current_node: str | None = None
         self.visited_nodes: set[str] = set()
         self.graph_input: Any = None

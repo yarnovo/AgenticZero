@@ -11,6 +11,7 @@
 - **会话管理**：专业的会话生命周期管理
 - **历史记录**：支持内存和文件的消息历史管理
 - **上下文管理**：智能的对话上下文管理和截断
+- **内置记忆系统**：支持短期、长期、情景和语义记忆管理
 
 ## 安装使用
 
@@ -122,6 +123,41 @@ async def main():
         # 在同一会话中继续对话
         response = await agent.run("我之前说我喜欢什么？")
         print(response)
+
+asyncio.run(main())
+```
+
+### 使用记忆功能
+
+智能体内置了记忆系统，可以存储和回忆重要信息：
+
+```python
+import asyncio
+from agent import Agent, AgentSettings, LLMSettings
+
+async def main():
+    settings = AgentSettings(
+        name="memory_agent",
+        instruction="你是一个具有记忆能力的AI助手。",
+        llm_settings=LLMSettings(
+            provider="openai",
+            api_key="your-api-key",
+            model="gpt-4"
+        )
+    )
+    
+    async with Agent(settings).connect() as agent:
+        # 存储记忆
+        await agent.run("请记住：项目截止日期是下周五。")
+        
+        # 使用记忆工具
+        await agent.run("使用memory_store工具记住：客户偏好React框架。")
+        
+        # 搜索记忆
+        await agent.run("使用memory_search工具搜索关于'项目'的记忆。")
+        
+        # 基于记忆回答
+        await agent.run("我的项目截止日期是什么时候？")
 
 asyncio.run(main())
 ```
@@ -241,7 +277,81 @@ history_manager = MessageHistoryManager.create_file_manager("./custom_storage")
 
 这是用于演示目的的示例代码。
 
+## 内置记忆系统
+
+智能体内置了强大的记忆系统，作为内部MCP服务自动可用。
+
+### 记忆类型
+
+- **SHORT_TERM** - 短期记忆：临时信息，可自动整合为长期记忆
+- **LONG_TERM** - 长期记忆：持久保存的重要信息
+- **EPISODIC** - 情景记忆：特定事件和经历
+- **SEMANTIC** - 语义记忆：概念性知识和事实
+
+### 记忆工具
+
+智能体可以使用以下内置工具管理记忆：
+
+1. **memory_store** - 存储新记忆
+   - `content` (string, required): 记忆内容
+   - `memory_type` (string, required): 记忆类型
+   - `importance` (number, optional): 重要性分数(0-1)
+   - `metadata` (object, optional): 额外元数据
+
+2. **memory_search** - 搜索相关记忆
+   - `query` (string, required): 搜索查询
+   - `memory_types` (array, optional): 限定的记忆类型
+   - `limit` (integer, optional): 返回数量限制
+   - `min_importance` (number, optional): 最小重要性阈值
+
+3. **memory_get_recent** - 获取最近的记忆
+   - `limit` (integer, optional): 返回数量限制
+   - `memory_types` (array, optional): 限定的记忆类型
+
+4. **memory_get_important** - 获取重要记忆
+   - `limit` (integer, optional): 返回数量限制
+   - `min_importance` (number, optional): 最小重要性阈值
+   - `memory_types` (array, optional): 限定的记忆类型
+
+5. **memory_update** - 更新现有记忆
+   - `memory_id` (string, required): 记忆ID
+   - `content` (string, optional): 新内容
+   - `importance` (number, optional): 新重要性分数
+   - `metadata` (object, optional): 新元数据
+
+6. **memory_delete** - 删除记忆
+   - `memory_id` (string, required): 要删除的记忆ID
+
+7. **memory_consolidate** - 整合记忆（短期转长期）
+
+8. **memory_stats** - 获取记忆系统统计信息
+
+### 记忆管理策略
+
+- **自动整合**：访问次数≥3或重要性≥0.8的短期记忆自动转为长期记忆
+- **遗忘机制**：基于时间、重要性和访问频率自动清理旧记忆
+- **上下文注入**：相关记忆自动作为系统消息发送给LLM
+- **智能截断**：超出上下文长度时智能保留重要记忆
+
+### 配置选项
+
+```python
+# 创建会话时配置记忆功能
+context = await context_manager.create_context(
+    conversation_id="demo",
+    enable_memory=True,          # 启用/禁用记忆
+    memory_context_size=5,       # 上下文中包含的记忆数量
+)
+```
+
 ## 变更日志
+
+### v2.1.0
+- 新增内置记忆系统
+- 记忆功能作为内部MCP服务自动可用
+- 支持短期、长期、情景和语义记忆类型
+- 自动记忆整合和遗忘机制
+- 记忆内容自动注入对话上下文
 
 ### v2.0.0
 - 完全重构为自驱动架构

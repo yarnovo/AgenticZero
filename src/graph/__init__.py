@@ -76,11 +76,11 @@ from .exception_nodes import (
     TryCatchNode,
 )
 from .executor import ExecutionContext, GraphExecutor
+from .graph_manager import GraphFileManager, GraphManager, GraphMemoryManager
 
 # 图代理和验证
 from .graph_proxy import GraphProxy
 from .graph_validator import GraphValidator
-from .graph_manager import GraphManager, GraphFileManager, GraphMemoryManager
 
 # 节点类型基类
 from .node_types import (
@@ -144,9 +144,9 @@ __all__ = [
     "GraphValidator",
     # 图管理系统
     "GraphManager",
-    "GraphFileManager", 
+    "GraphFileManager",
     "GraphMemoryManager",
 ]
 
 # 版本信息
-__version__ = "2.0.0"  # 重新设计版本
+__version__ = "2.0.0"

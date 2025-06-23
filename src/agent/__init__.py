@@ -1,6 +1,6 @@
 """Agent 智能体框架 - 自驱动智能体实现。"""
 
-from .agent import Agent, AgenticAgent, MinimalAgent
+from .agent import Agent
 from .core_engine import CoreEngine
 from .llm_session_manager import LLMSessionInterface, LLMSessionManager
 from .mcp_client_factory import MCPClientFactory
@@ -29,8 +29,6 @@ from .settings import AgentSettings, LLMSettings, MCPServerSettings
 __all__ = [
     # 核心智能体
     "Agent",
-    "AgenticAgent",  # 别名，向后兼容
-    "MinimalAgent",  # 别名，向后兼容
     # 配置
     "AgentSettings",
     "LLMSettings",
