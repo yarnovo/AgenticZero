@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Send, Plus, Menu, MessageSquare } from 'lucide-react'
 import { MessageList, useMessageList, type VirtuosoMessage, type VirtuosoMessageListProps } from '@/components/MessageList'
+import UserProfile from '@/components/UserProfile'
 
 // 自定义消息内容组件
 const CustomItemContent: VirtuosoMessageListProps<VirtuosoMessage, null>['ItemContent'] = ({ data }) => {
@@ -83,16 +84,19 @@ export default function Home() {
     <div className="flex h-screen bg-background">
       {/* 侧边栏 */}
       <div className={`${isSidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 bg-muted border-r border-border overflow-hidden`}>
-        <div className="p-4">
-          <Button 
-            onClick={startNewConversation} 
-            className="w-full mb-4 justify-start"
-            variant="outline"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            新对话
-          </Button>
-          <ScrollArea className="h-[calc(100vh-120px)]">
+        <div className="flex flex-col h-full">
+          <div className="p-4">
+            <Button 
+              onClick={startNewConversation} 
+              className="w-full mb-4 justify-start"
+              variant="outline"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              新对话
+            </Button>
+          </div>
+          
+          <ScrollArea className="flex-1 px-4">
             <div className="space-y-2">
               {conversations.map((conv) => (
                 <div
@@ -115,6 +119,11 @@ export default function Home() {
               ))}
             </div>
           </ScrollArea>
+          
+          {/* 用户信息区域 */}
+          <div className="p-4 border-t border-border">
+            <UserProfile />
+          </div>
         </div>
       </div>
 
