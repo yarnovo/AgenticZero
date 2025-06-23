@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   Dialog,
   DialogContent,
@@ -83,7 +84,7 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[80vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
@@ -94,7 +95,8 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <ScrollArea className="max-h-[60vh] pr-4">
+          <div className="space-y-6">
           {/* 当前活跃提供商 */}
           <div>
             <h3 className="text-lg font-medium mb-3">当前使用的提供商</h3>
@@ -322,7 +324,8 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
               API 密钥将被安全地存储在你的浏览器本地存储中。请不要在不受信任的设备上输入你的 API 密钥。
             </AlertDescription>
           </Alert>
-        </div>
+          </div>
+        </ScrollArea>
 
         {/* 操作按钮 */}
         <div className="flex justify-end gap-3 pt-4 border-t">
