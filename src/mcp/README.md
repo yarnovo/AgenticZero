@@ -1,24 +1,85 @@
 # MCP (Model Context Protocol) 服务模块
 
-MCP 模块为 AgenticZero 提供统一的服务管理和协议封装，支持各种内部服务通过标准 MCP 协议进行交互。
+## 模块简介
+
+MCP 模块是 AgenticZero 项目的核心服务组件，负责为 Agent 提供统一的服务管理和协议封装能力。本模块基于 Model Context Protocol (MCP) 标准，为各种内部服务提供标准化的接口和交互协议。
+
+## 模块职责
+
+- **为 Agent 提供内置 MCP 服务**：作为 Agent 的核心组件，提供服务发现、服务创建、服务调用等功能
+- **解决 MCP 服务自驱性问题**：通过服务管理器实现服务的动态创建和管理，让 Agent 能够自主扩展其能力
+- **统一服务接口**：将不同类型的内部服务（Python 执行、图管理等）统一封装为 MCP 协议
+- **服务生命周期管理**：提供服务的完整生命周期管理，包括创建、配置、监控、销毁等
 
 ## 功能特性
 
+### 核心特性
 - **统一服务管理**：提供服务池管理，支持服务的创建、删除、查询等操作
-- **Python 代码执行**：支持 Python 文件管理和沙盒代码执行
+- **动态服务扩展**：支持在运行时动态创建和配置新的服务实例
+- **标准 MCP 协议**：遵循 MCP 标准，确保与其他 MCP 兼容组件的互操作性
+- **内置集成**：自动集成到 Agent 中作为内置服务，无需额外配置
+
+### 服务类型
+- **Python 代码执行服务**：支持 Python 文件管理和沙盒代码执行
 - **图管理服务**：封装 GraphManager，提供图的完整生命周期管理
-- **内置集成**：自动集成到 Agent 中作为内置服务
+- **服务管理器**：核心管理组件，负责所有服务实例的协调和管理
 
-## 快速开始
+### 架构优势
+- **模块化设计**：每个服务类型独立封装，易于扩展和维护
+- **安全隔离**：服务实例之间相互隔离，确保安全性
+- **配置灵活**：支持丰富的配置选项，满足不同使用场景
+- **性能优化**：支持服务复用和资源管理，提供良好的性能表现
 
-MCP 服务已自动集成到 Agent 中，无需手动配置。当创建 Agent 实例时，会自动加载以下内置服务：
+## 安装与配置
+
+### 自动集成
+
+MCP 模块已自动集成到 AgenticZero 项目中，无需单独安装。当创建 Agent 实例时，系统会自动加载以下内置服务：
 
 1. **memory** - 记忆管理服务
 2. **mcp_service_manager** - MCP 服务管理器
 
+### 依赖要求
+
+MCP 模块依赖以下组件：
+- Python 3.8+
+- AgenticZero Graph 模块
+- 标准 Python 库（ast, json, pathlib 等）
+
+### 配置选项
+
+服务创建时可通过 `config` 参数进行配置：
+
+**Python 服务配置：**
+```python
+{
+    "base_dir": "python_scripts",  # Python 文件存储目录
+    "timeout": 30,                 # 代码执行超时时间（秒）
+    "memory_limit": "100MB"        # 内存限制
+}
+```
+
+**Graph 服务配置：**
+```python
+{
+    "base_path": "graphs",         # 图文件存储路径
+    "auto_save": True,             # 是否自动保存
+    "validation": True             # 是否启用图验证
+}
+```
+
+## 快速开始
+
+### 基本使用流程
+
+1. **创建 Agent 实例**：Agent 会自动加载 MCP 服务
+2. **列出可用服务**：使用 `service_list` 查看服务类型
+3. **创建服务实例**：使用 `service_create` 创建具体服务
+4. **调用服务功能**：使用 `service_call` 执行具体任务
+
 ## 使用示例
 
-### 1. 通过 Agent 使用 MCP 服务
+### 1. 通过 Agent 使用 MCP 服务（推荐方式）
 
 ```python
 from src.agent import Agent
@@ -84,7 +145,30 @@ result = await mcp_manager.handle_call_tool("service_create", {
 })
 ```
 
-## 服务类型
+## API 接口说明
+
+### MCP 服务管理器 API
+
+MCP 服务管理器提供统一的服务管理接口：
+
+| 工具名称 | 功能描述 | 参数 |
+|---------|---------|------|
+| `service_list` | 列出所有服务类型和实例 | `show_instances`: 是否显示实例（默认 true） |
+| `service_create` | 创建服务实例 | `service_type`: 服务类型<br>`service_id`: 服务ID<br>`config`: 配置参数（可选） |
+| `service_delete` | 删除服务实例 | `service_id`: 服务ID |
+| `service_info` | 获取服务信息 | `service_id`: 服务ID |
+| `service_call` | 调用服务工具 | `service_id`: 服务ID<br>`tool_name`: 工具名称<br>`arguments`: 工具参数 |
+| `service_list_tools` | 列出服务的所有工具 | `service_id`: 服务ID |
+
+### 标准 MCP 协议
+
+每个服务都实现标准的 MCP 协议接口：
+
+- `handle_initialize()` - 初始化服务
+- `handle_list_tools()` - 列出可用工具
+- `handle_call_tool()` - 执行工具调用
+
+## 服务类型详解
 
 ### 1. Python MCP 服务
 
@@ -131,17 +215,6 @@ result = await mcp_manager.handle_call_tool("service_create", {
 - `graph_edge_add` - 添加边
 - `graph_edge_remove` - 移除边
 - `graph_validate` - 验证图结构
-
-## MCP 服务管理器工具
-
-服务管理器提供以下工具来管理服务实例：
-
-- `service_list` - 列出所有服务类型和实例
-- `service_create` - 创建服务实例
-- `service_delete` - 删除服务实例
-- `service_info` - 获取服务信息
-- `service_call` - 调用服务工具
-- `service_list_tools` - 列出服务的所有工具
 
 ## 高级用法
 
@@ -224,34 +297,145 @@ await agent.run(
 - 文件访问受限于配置的目录
 - 不允许系统级操作
 
-## 扩展服务
+## 扩展开发
 
-要添加新的 MCP 服务类型：
+### 添加新的 MCP 服务类型
 
-1. 在 `src/mcp/` 下创建新的服务目录
-2. 实现 MCP 服务器类，提供标准的 MCP 接口
-3. 在 `MCPServiceManager` 中注册新服务类型
+要扩展 MCP 模块并添加新的服务类型，请遵循以下步骤：
 
-示例：
+#### 1. 创建服务目录结构
+```
+src/mcp/
+├── my_service/
+│   ├── __init__.py
+│   ├── my_mcp_server.py      # 主服务器类
+│   ├── my_manager.py         # 业务逻辑管理器（可选）
+│   └── tests/
+│       └── test_my_service.py
+```
+
+#### 2. 实现 MCP 服务器类
 
 ```python
 # my_service/my_mcp_server.py
-class MyMCPServer:
-    async def handle_initialize(self, params):
-        return {"capabilities": {"tools": {"available": True}}}
-    
-    async def handle_list_tools(self):
-        return [{"name": "my_tool", "description": "My custom tool"}]
-    
-    async def handle_call_tool(self, name, arguments):
-        if name == "my_tool":
-            return [{"type": "text", "text": "Tool executed"}]
+from typing import Any, Dict, List
 
-# 在 mcp_service_manager.py 中注册
-self.service_types["my_service"] = {
-    "class": MyMCPServer,
-    "description": "My custom service"
-}
+class MyMCPServer:
+    """自定义 MCP 服务器实现"""
+    
+    def __init__(self, config: Dict[str, Any] = None):
+        """初始化服务器
+        
+        Args:
+            config: 服务配置参数
+        """
+        self.config = config or {}
+        self.initialized = False
+    
+    async def handle_initialize(self, params: Dict[str, Any]) -> Dict[str, Any]:
+        """初始化服务"""
+        self.initialized = True
+        return {
+            "capabilities": {
+                "tools": {"available": True}
+            },
+            "serverInfo": {
+                "name": "my_custom_service",
+                "version": "1.0.0"
+            }
+        }
+    
+    async def handle_list_tools(self) -> List[Dict[str, Any]]:
+        """列出可用工具"""
+        return [
+            {
+                "name": "my_tool",
+                "description": "执行自定义任务",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "param1": {"type": "string", "description": "参数1"},
+                        "param2": {"type": "integer", "description": "参数2"}
+                    },
+                    "required": ["param1"]
+                }
+            }
+        ]
+    
+    async def handle_call_tool(self, name: str, arguments: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """执行工具调用"""
+        if name == "my_tool":
+            param1 = arguments.get("param1")
+            param2 = arguments.get("param2", 0)
+            
+            # 执行业务逻辑
+            result = f"处理参数: {param1}, {param2}"
+            
+            return [{"type": "text", "text": result}]
+        
+        raise ValueError(f"未知工具: {name}")
+```
+
+#### 3. 注册服务类型
+
+在 `src/mcp/mcp_service_manager.py` 中注册新服务：
+
+```python
+# 导入新服务
+from .my_service.my_mcp_server import MyMCPServer
+
+class MCPServiceManager:
+    def __init__(self, ...):
+        # 注册服务类型
+        self.service_types = {
+            "python": {"class": PythonMCPServer, "description": "Python 代码管理和执行服务"},
+            "graph": {"class": GraphMCPServer, "description": "图管理和执行服务"},
+            "my_service": {"class": MyMCPServer, "description": "我的自定义服务"},  # 新增
+        }
+```
+
+#### 4. 编写测试
+
+```python
+# my_service/tests/test_my_service.py
+import pytest
+from ..my_mcp_server import MyMCPServer
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_my_service_initialize():
+    """测试服务初始化"""
+    server = MyMCPServer()
+    result = await server.handle_initialize({})
+    
+    assert result["serverInfo"]["name"] == "my_custom_service"
+    assert result["capabilities"]["tools"]["available"] is True
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_my_service_tools():
+    """测试工具列表"""
+    server = MyMCPServer()
+    tools = await server.handle_list_tools()
+    
+    assert len(tools) == 1
+    assert tools[0]["name"] == "my_tool"
+```
+
+#### 5. 使用新服务
+
+```python
+# 创建自定义服务实例
+await agent.run(
+    "使用 service_create 工具创建自定义服务，"
+    "service_type 为 my_service，service_id 为 my_instance"
+)
+
+# 调用自定义工具
+await agent.run(
+    "使用 service_call 工具调用 my_instance 服务的 my_tool 工具，"
+    "参数为 param1='test', param2=42"
+)
 ```
 
 ## 故障排查
