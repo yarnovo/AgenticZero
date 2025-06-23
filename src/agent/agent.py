@@ -4,6 +4,9 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
+from src.graph import GraphManager
+from src.mcp import MCPServiceManager
+
 from .core_engine import CoreEngine
 from .internal_mcp_client import InternalMCPClient
 from .llm_session_manager import LLMSessionManager
@@ -73,6 +76,9 @@ class Agent:
         # 创建记忆管理器
         self.memory_manager = MemoryManager.create_memory_manager()
 
+        # 创建图管理器
+        self.graph_manager = GraphManager()
+
         # 创建会话上下文管理器，注入记忆管理器
         self.context_manager = SessionContextManager(
             history_manager=history_manager, memory_manager=self.memory_manager
@@ -95,6 +101,9 @@ class Agent:
 
         # 添加内置的记忆MCP服务器
         await self._add_internal_memory_server()
+
+        # 添加内置的MCP服务管理器
+        await self._add_internal_mcp_service()
 
         # 添加用户配置的MCP服务器
         for server_name, server_config in self.config.mcp_servers.items():
@@ -234,3 +243,30 @@ class Agent:
         self.mcp_session_manager.sessions["memory"] = session
 
         logger.info("已添加内置记忆MCP服务器")
+
+    async def _add_internal_mcp_service(self) -> None:
+        """添加内置的 MCP 服务管理器。"""
+        # 创建 MCP 服务管理器实例
+        mcp_service = MCPServiceManager(graph_manager=self.graph_manager)
+
+        # 创建内部 MCP 客户端
+        internal_client = InternalMCPClient(mcp_service)
+
+        # 使用特殊配置添加到 MCP 会话管理器
+        from .settings import MCPServerSettings
+
+        internal_config = MCPServerSettings(
+            name="mcp_service_manager",
+            command="internal:mcp_service",
+            args=[],
+            env={},
+        )
+
+        # 直接创建会话并添加
+        from .mcp_session_manager import MCPSession
+
+        session = MCPSession("mcp_service_manager", internal_config, internal_client)
+        await session.connect()
+        self.mcp_session_manager.sessions["mcp_service_manager"] = session
+
+        logger.info("已添加内置 MCP 服务管理器")
