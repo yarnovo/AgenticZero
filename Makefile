@@ -1,4 +1,4 @@
-.PHONY: help test lint type-check format format-check clean install dev-install all check
+.PHONY: help test lint type-check format format-check clean install dev-install all check api api-dev api-reload frontend-dev frontend-build frontend-start frontend-install frontend-clean
 
 # 默认目标
 .DEFAULT_GOAL := help
@@ -16,6 +16,18 @@ help:
 	@echo "  make check         Run all checks (lint, type-check, format-check, test)"
 	@echo "  make clean         Clean up cache and build files"
 	@echo "  make all           Run format, lint, type-check, and test"
+	@echo ""
+	@echo "API commands:"
+	@echo "  make api           Run API server in production mode"
+	@echo "  make api-dev       Run API server in development mode with reload"
+	@echo "  make api-reload    Run API server with auto-reload (alias for api-dev)"
+	@echo ""
+	@echo "Frontend commands:"
+	@echo "  make frontend-install  Install frontend dependencies"
+	@echo "  make frontend-dev      Run frontend in development mode"
+	@echo "  make frontend-build    Build frontend for production"
+	@echo "  make frontend-start    Start frontend in production mode"
+	@echo "  make frontend-clean    Clean frontend build files"
 
 # 安装依赖
 install:
@@ -103,3 +115,36 @@ coverage-open: coverage
 	else \
 		echo "Please open htmlcov/index.html in your browser"; \
 	fi
+
+# API 相关命令
+# 生产模式运行 API
+api:
+	uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+
+# 开发模式运行 API（带自动重载）
+api-dev:
+	uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+# 自动重载模式的别名
+api-reload: api-dev
+
+# 前端相关命令
+# 安装前端依赖
+frontend-install:
+	cd frontend && npm install
+
+# 开发模式运行前端
+frontend-dev:
+	cd frontend && npm run dev
+
+# 构建前端
+frontend-build:
+	cd frontend && npm run build
+
+# 生产模式运行前端
+frontend-start:
+	cd frontend && npm run start
+
+# 清理前端构建文件
+frontend-clean:
+	cd frontend && rm -rf .next node_modules

@@ -214,9 +214,7 @@ class GraphMCPServer:
 
                 # 创建图
                 proxy = self.graph_manager.create(
-                    name=graph_id,
-                    description=description,
-                    auto_load=save_to_file
+                    name=graph_id, description=description, auto_load=save_to_file
                 )
 
                 return [{"type": "text", "text": f"图 '{graph_id}' 创建成功"}]
@@ -245,7 +243,7 @@ class GraphMCPServer:
                 graph_id = arguments["graph_id"]
                 delete_file = arguments.get("delete_file", True)
 
-                self.graph_manager.delete(graph_id, delete_file)
+                self.graph_manager.delete(graph_id, force=delete_file)
 
                 return [{"type": "text", "text": f"图 '{graph_id}' 删除成功"}]
 
@@ -273,7 +271,8 @@ class GraphMCPServer:
                 return [
                     {
                         "type": "text",
-                        "text": f"找到 {len(graph_list)} 个图:\n" + "\n".join(graph_list),
+                        "text": f"找到 {len(graph_list)} 个图:\n"
+                        + "\n".join(graph_list),
                     }
                 ]
 
@@ -349,7 +348,7 @@ class GraphMCPServer:
                     proxy = self.graph_manager.load(graph_id)
 
                 # 添加节点
-                proxy.add_node(node_type, node_id, **config)
+                proxy.add_node(node_id, node_type, **config)
 
                 # 保存更改
                 self.graph_manager.save(graph_id)

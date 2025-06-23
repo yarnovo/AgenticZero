@@ -86,9 +86,14 @@ class SandboxEnvironment:
 
         # 创建受限的内置函数字典
         restricted_builtins = {}
+        # 处理 __builtins__ 可能是字典或模块的情况
+        builtins_dict = (
+            __builtins__ if isinstance(__builtins__, dict) else __builtins__.__dict__
+        )
+
         for name in safe_builtins:
-            if hasattr(__builtins__, name):
-                restricted_builtins[name] = getattr(__builtins__, name)
+            if name in builtins_dict:
+                restricted_builtins[name] = builtins_dict[name]
 
         # 添加受限的 print 函数
         def safe_print(*args, **kwargs):
@@ -128,8 +133,13 @@ class SandboxEnvironment:
             # 编译代码
             compiled_code = compile(code, "<sandbox>", "exec")
 
-            # 执行代码
-            exec(compiled_code, self.globals, self.locals)
+            # 执行代码 - 使用合并的命名空间以支持递归
+            namespace = {**self.globals, **self.locals}
+            exec(compiled_code, namespace)
+            # 更新 locals 以保存新定义的变量
+            for key, value in namespace.items():
+                if key not in self.globals:
+                    self.locals[key] = value
 
             # 获取输出
             output = self.output_buffer.getvalue()

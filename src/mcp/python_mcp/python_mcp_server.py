@@ -228,15 +228,13 @@ class PythonMCPServer:
 
             elif name == "python_read":
                 result = self.file_manager.read(arguments["name"])
-                return [
-                    {
-                        "type": "text",
-                        "text": f"文件: {result['name']}.py\n"
-                        f"创建时间: {result['metadata']['created_at']}\n"
-                        f"更新时间: {result['metadata']['updated_at']}\n"
-                        f"代码:\n```python\n{result['code']}\n```",
-                    }
-                ]
+                text = f"文件: {result['name']}.py\n"
+                text += f"创建时间: {result['metadata']['created_at']}\n"
+                text += f"更新时间: {result['metadata']['updated_at']}\n"
+                if result["metadata"].get("description"):
+                    text += f"描述: {result['metadata']['description']}\n"
+                text += f"代码:\n```python\n{result['code']}\n```"
+                return [{"type": "text", "text": text}]
 
             elif name == "python_update":
                 result = self.file_manager.update(
