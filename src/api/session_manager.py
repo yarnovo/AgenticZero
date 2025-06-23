@@ -1,16 +1,14 @@
 """会话管理模块 - 管理 Agent 会话的创建、存储和生命周期"""
 
 import json
-import os
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
 from src.agent import Agent
-from src.agent.settings import AgentSettings, LLMSettings, LLMProvider
+from src.agent.settings import AgentSettings, LLMProvider, LLMSettings
 
 
 class SessionConfig(BaseModel):
@@ -21,8 +19,8 @@ class SessionConfig(BaseModel):
     description: str = Field(default="", description="会话描述")
     created_at: datetime = Field(default_factory=datetime.now, description="创建时间")
     updated_at: datetime = Field(default_factory=datetime.now, description="更新时间")
-    agent_settings: Optional[dict] = Field(default=None, description="Agent 配置")
-    metadata: Dict[str, any] = Field(default_factory=dict, description="元数据")
+    agent_settings: dict | None = Field(default=None, description="Agent 配置")
+    metadata: dict[str, any] = Field(default_factory=dict, description="元数据")
 
 
 class SessionManager:
@@ -37,8 +35,8 @@ class SessionManager:
         """
         self.base_path = Path(base_path)
         self.base_path.mkdir(exist_ok=True)
-        self.sessions: Dict[str, Agent] = {}  # 内存中的会话
-        self.session_configs: Dict[str, SessionConfig] = {}  # 会话配置
+        self.sessions: dict[str, Agent] = {}  # 内存中的会话
+        self.session_configs: dict[str, SessionConfig] = {}  # 会话配置
 
     def _get_session_path(self, session_id: str) -> Path:
         """获取会话的文件系统路径"""
@@ -52,7 +50,7 @@ class SessionManager:
         config.updated_at = datetime.now()
         config_file.write_text(config.model_dump_json(indent=2))
 
-    def _load_session_config(self, session_id: str) -> Optional[SessionConfig]:
+    def _load_session_config(self, session_id: str) -> SessionConfig | None:
         """从文件加载会话配置"""
         config_file = self._get_session_path(session_id) / "session_config.json"
         if config_file.exists():
@@ -63,11 +61,11 @@ class SessionManager:
     async def create_session(
         self,
         session_id: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
         llm_provider: LLMProvider = LLMProvider.OPENAI,
-        llm_settings: Optional[dict] = None,
-        agent_settings: Optional[dict] = None,
+        llm_settings: dict | None = None,
+        agent_settings: dict | None = None,
     ) -> SessionConfig:
         """
         创建新的会话
@@ -136,7 +134,7 @@ class SessionManager:
 
         return config
 
-    async def get_session(self, session_id: str) -> Optional[Agent]:
+    async def get_session(self, session_id: str) -> Agent | None:
         """
         获取会话的 Agent 实例
 
@@ -186,7 +184,7 @@ class SessionManager:
 
         return False
 
-    async def list_sessions(self, source: str = "all") -> List[SessionConfig]:
+    async def list_sessions(self, source: str = "all") -> list[SessionConfig]:
         """
         列出所有会话
 
@@ -217,10 +215,10 @@ class SessionManager:
     async def update_session(
         self,
         session_id: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        metadata: Optional[Dict[str, any]] = None,
-    ) -> Optional[SessionConfig]:
+        name: str | None = None,
+        description: str | None = None,
+        metadata: dict[str, any] | None = None,
+    ) -> SessionConfig | None:
         """
         更新会话信息
 
@@ -257,7 +255,7 @@ class SessionManager:
 
         return config
 
-    def get_session_stats(self) -> Dict[str, any]:
+    def get_session_stats(self) -> dict[str, any]:
         """获取会话统计信息"""
         return {
             "total_sessions": len(list(self.base_path.iterdir())),

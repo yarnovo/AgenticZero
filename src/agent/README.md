@@ -179,6 +179,105 @@ asyncio.run(main())
 - **透明的工具调用**：可以看到智能体调用了哪些工具
 - **可中断性**：可以随时停止生成
 
+### 使用本地模型（Ollama）
+
+智能体支持通过 Ollama 使用本地大模型，无需 API 密钥，完全私有化部署：
+
+```python
+import asyncio
+from agent import Agent, AgentSettings, LLMSettings
+
+async def main():
+    # 配置使用本地Ollama模型
+    settings = AgentSettings(
+        name="local_agent",
+        instruction="你是一个运行在本地的AI助手，使用Llama模型。",
+        llm_settings=LLMSettings(
+            provider="ollama",
+            model="llama3.2",  # 使用已下载的模型
+            base_url="http://localhost:11434",  # Ollama服务地址
+            temperature=0.8,
+            max_tokens=1024
+        )
+    )
+    
+    async with Agent(settings).connect() as agent:
+        # 普通对话
+        response = await agent.run("解释一下什么是机器学习")
+        print(response)
+        
+        # 流式响应（推荐用于本地模型）
+        print("\n流式响应：")
+        async for chunk in agent.run_stream("写一个Python冒泡排序算法"):
+            if chunk["type"] == "content":
+                print(chunk["content"], end="", flush=True)
+
+asyncio.run(main())
+```
+
+#### Ollama 设置步骤
+
+1. **安装 Ollama**
+   ```bash
+   # macOS
+   brew install ollama
+   
+   # Linux/Windows
+   # 从 https://ollama.com 下载安装包
+   ```
+
+2. **启动 Ollama 服务**
+   ```bash
+   ollama serve
+   ```
+
+3. **下载模型**
+   ```bash
+   # 下载推荐的模型
+   ollama pull llama3.2          # 3B参数，快速响应
+   ollama pull llama3.2:7b       # 7B参数，更好质量
+   ollama pull llama3.1:8b       # 支持工具调用
+   ollama pull qwen2.5:7b        # 中文优化模型
+   ollama pull codellama:7b      # 代码专用模型
+   ```
+
+4. **验证模型可用**
+   ```bash
+   ollama list
+   ```
+
+#### 支持的 Ollama 模型
+
+| 模型名称 | 大小 | 特点 | 推荐用途 |
+|---------|------|------|----------|
+| `llama3.2` | 3B | 快速、轻量 | 一般对话、快速响应 |
+| `llama3.2:7b` | 7B | 平衡性能 | 复杂对话、内容生成 |
+| `llama3.1:8b` | 8B | 支持工具调用 | 智能体应用、复杂任务 |
+| `qwen2.5:7b` | 7B | 中文优化 | 中文对话、翻译 |
+| `codellama:7b` | 7B | 代码生成 | 编程助手、代码分析 |
+
+#### Ollama 配置选项
+
+```python
+# 完整的Ollama配置示例
+llm_settings = LLMSettings(
+    provider="ollama",
+    model="llama3.1:8b",           # 模型名称
+    base_url="http://localhost:11434",  # Ollama服务地址
+    temperature=0.7,               # 创造性控制
+    max_tokens=2048,              # 最大输出长度
+    # Ollama不需要api_key
+)
+```
+
+#### Ollama 优势
+
+- **隐私安全**：所有数据在本地处理，不会发送到外部服务器
+- **无API费用**：没有按使用量收费，一次部署永久使用
+- **离线运行**：无需网络连接即可使用
+- **自定义控制**：可以完全控制模型行为和配置
+- **工具支持**：部分模型（如 llama3.1）支持工具调用功能
+
 ### 使用记忆功能
 
 智能体内置了记忆系统，可以存储和回忆重要信息：

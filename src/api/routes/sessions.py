@@ -1,13 +1,11 @@
 """会话管理 API 路由"""
 
-from typing import List, Optional
-
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from src.agent.settings import LLMProvider
-from src.api.session_manager import SessionConfig, SessionManager
+from src.api.session_manager import SessionManager
 
 # 创建路由器
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -21,21 +19,21 @@ class CreateSessionRequest(BaseModel):
     """创建会话请求"""
 
     session_id: str = Field(description="会话唯一标识符")
-    name: Optional[str] = Field(default=None, description="会话名称")
-    description: Optional[str] = Field(default=None, description="会话描述")
+    name: str | None = Field(default=None, description="会话名称")
+    description: str | None = Field(default=None, description="会话描述")
     llm_provider: LLMProvider = Field(
         default=LLMProvider.OPENAI, description="LLM 提供商"
     )
-    llm_settings: Optional[dict] = Field(default=None, description="LLM 设置")
-    agent_settings: Optional[dict] = Field(default=None, description="Agent 设置")
+    llm_settings: dict | None = Field(default=None, description="LLM 设置")
+    agent_settings: dict | None = Field(default=None, description="Agent 设置")
 
 
 class UpdateSessionRequest(BaseModel):
     """更新会话请求"""
 
-    name: Optional[str] = Field(default=None, description="会话名称")
-    description: Optional[str] = Field(default=None, description="会话描述")
-    metadata: Optional[dict] = Field(default=None, description="元数据")
+    name: str | None = Field(default=None, description="会话名称")
+    description: str | None = Field(default=None, description="会话描述")
+    metadata: dict | None = Field(default=None, description="元数据")
 
 
 class SessionResponse(BaseModel):
@@ -52,7 +50,7 @@ class SessionResponse(BaseModel):
 class SessionListResponse(BaseModel):
     """会话列表响应"""
 
-    sessions: List[SessionResponse]
+    sessions: list[SessionResponse]
     total: int
 
 

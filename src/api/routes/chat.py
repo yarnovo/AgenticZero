@@ -1,13 +1,11 @@
 """聊天 API 路由 - 支持流式和非流式响应"""
 
 import json
-from typing import AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
 
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-
-from src.api.session_manager import SessionManager
 
 # 创建路由器
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -22,7 +20,7 @@ class ChatRequest(BaseModel):
     session_id: str = Field(description="会话ID")
     message: str = Field(description="用户消息")
     stream: bool = Field(default=False, description="是否使用流式响应")
-    max_iterations: Optional[int] = Field(
+    max_iterations: int | None = Field(
         default=None, description="最大迭代次数（用于控制工具调用）"
     )
 
@@ -36,7 +34,7 @@ class ChatResponse(BaseModel):
 
 
 async def generate_stream_response(
-    agent, message: str, max_iterations: Optional[int] = None
+    agent, message: str, max_iterations: int | None = None
 ) -> AsyncGenerator[str, None]:
     """
     生成流式响应
@@ -53,7 +51,7 @@ async def generate_stream_response(
 
 
 @router.post("/completions")
-async def chat_completion(request: ChatRequest, accept: Optional[str] = Header(None)):
+async def chat_completion(request: ChatRequest, accept: str | None = Header(None)):
     """
     聊天完成端点
 
@@ -103,7 +101,7 @@ async def send_message(
     session_id: str,
     message: str,
     stream: bool = False,
-    max_iterations: Optional[int] = None,
+    max_iterations: int | None = None,
 ):
     """
     发送消息到指定会话（简化的接口）

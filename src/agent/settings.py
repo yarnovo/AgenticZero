@@ -18,11 +18,12 @@ class MCPServerSettings(BaseModel):
 class LLMSettings(BaseModel):
     """LLM 提供商设置。"""
 
-    provider: str = "openai"  # openai, anthropic 等
-    api_key: str
+    provider: str = "openai"  # openai, anthropic, ollama 等
+    api_key: str = ""  # Ollama 不需要 API key
     model: str = "gpt-4"
     temperature: float = 0.7
     max_tokens: int = 2048
+    base_url: str = ""  # Ollama 服务器地址，如 http://localhost:11434
 
     class Config:
         extra = "allow"

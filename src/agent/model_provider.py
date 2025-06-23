@@ -490,6 +490,231 @@ class AnthropicSession(LLMSessionInterface):
             yield {"type": "error", "error": str(e)}
 
 
+class OllamaSession(LLMSessionInterface):
+    """Ollama大模型会话实现。"""
+
+    def __init__(self, config: LLMSettings):
+        """初始化Ollama会话。
+
+        Args:
+            config: LLM配置
+        """
+        self.config = config
+        self.client = None
+        self._initialized = False
+        # Ollama默认配置
+        self.base_url = getattr(config, "base_url", "http://localhost:11434")
+
+    async def initialize(self) -> None:
+        """初始化会话。"""
+        if self._initialized:
+            return
+
+        try:
+            # 使用 requests 进行 HTTP 请求，Ollama 提供 REST API
+            import requests
+
+            # 测试连接
+            response = requests.get(f"{self.base_url}/api/tags", timeout=5)
+            if response.status_code == 200:
+                self._initialized = True
+                logger.info("Ollama会话已初始化")
+            else:
+                raise RuntimeError(f"无法连接到Ollama服务: {response.status_code}")
+        except ImportError:
+            raise RuntimeError("需要安装 requests 包: pip install requests")
+        except Exception as e:
+            raise RuntimeError(f"初始化Ollama会话失败: {e}")
+
+    async def close(self) -> None:
+        """关闭会话。"""
+        if self._initialized:
+            self._initialized = False
+            logger.info("Ollama会话已关闭")
+
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """与Ollama模型进行对话。
+
+        Args:
+            messages: 消息列表
+            tools: 可用工具列表
+
+        Returns:
+            模型响应
+
+        Raises:
+            RuntimeError: 会话未初始化时抛出
+        """
+        if not self._initialized:
+            raise RuntimeError("Ollama会话未初始化")
+
+        try:
+            import requests
+
+            # 准备请求数据
+            request_data = {
+                "model": self.config.model,
+                "messages": messages,
+                "stream": False,
+                "options": {
+                    "temperature": self.config.temperature,
+                    "num_predict": self.config.max_tokens,
+                },
+            }
+
+            # 如果有工具，添加工具参数（Ollama支持工具调用）
+            if tools:
+                request_data["tools"] = tools
+
+            # 调用Ollama API
+            response = requests.post(
+                f"{self.base_url}/api/chat",
+                json=request_data,
+                timeout=300,  # 5分钟超时
+            )
+            response.raise_for_status()
+
+            # 解析响应
+            result_data = response.json()
+            message = result_data.get("message", {})
+
+            result = {
+                "content": message.get("content", ""),
+            }
+
+            # 处理工具调用
+            if "tool_calls" in message and message["tool_calls"]:
+                result["tool_calls"] = []
+                for tool_call in message["tool_calls"]:
+                    result["tool_calls"].append(
+                        {
+                            "type": "function",
+                            "function": {
+                                "name": tool_call.get("function", {}).get("name", ""),
+                                "arguments": tool_call.get("function", {}).get(
+                                    "arguments", "{}"
+                                ),
+                            },
+                        }
+                    )
+
+            logger.debug(
+                f"Ollama响应: {len(result['content'])} 字符，{len(result.get('tool_calls', []))} 个工具调用"
+            )
+            return result
+
+        except Exception as e:
+            logger.error(f"Ollama调用失败: {e}")
+            raise
+
+    async def chat_stream(
+        self,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, Any]] | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """与Ollama模型进行流式对话。
+
+        Args:
+            messages: 消息列表
+            tools: 可用工具列表
+
+        Yields:
+            模型响应片段
+
+        Raises:
+            RuntimeError: 会话未初始化时抛出
+        """
+        if not self._initialized:
+            raise RuntimeError("Ollama会话未初始化")
+
+        try:
+            import requests
+
+            # 准备请求数据
+            request_data = {
+                "model": self.config.model,
+                "messages": messages,
+                "stream": True,
+                "options": {
+                    "temperature": self.config.temperature,
+                    "num_predict": self.config.max_tokens,
+                },
+            }
+
+            # 如果有工具，添加工具参数
+            if tools:
+                request_data["tools"] = tools
+
+            # 调用Ollama流式API
+            response = requests.post(
+                f"{self.base_url}/api/chat", json=request_data, stream=True, timeout=300
+            )
+            response.raise_for_status()
+
+            # 处理流式响应
+            accumulated_content = ""
+            accumulated_tool_calls = []
+
+            for line in response.iter_lines():
+                if line:
+                    try:
+                        chunk_data = json.loads(line.decode("utf-8"))
+
+                        # 检查是否出错
+                        if "error" in chunk_data:
+                            yield {"type": "error", "error": chunk_data["error"]}
+                            continue
+
+                        message = chunk_data.get("message", {})
+
+                        # 处理内容片段
+                        if "content" in message and message["content"]:
+                            content = message["content"]
+                            accumulated_content += content
+                            yield {"type": "content", "content": content}
+
+                        # 处理工具调用
+                        if "tool_calls" in message and message["tool_calls"]:
+                            for tool_call in message["tool_calls"]:
+                                accumulated_tool_calls.append(
+                                    {
+                                        "type": "function",
+                                        "function": {
+                                            "name": tool_call.get("function", {}).get(
+                                                "name", ""
+                                            ),
+                                            "arguments": tool_call.get(
+                                                "function", {}
+                                            ).get("arguments", "{}"),
+                                        },
+                                    }
+                                )
+
+                        # 检查是否完成
+                        if chunk_data.get("done", False):
+                            # 如果有工具调用，发送它们
+                            if accumulated_tool_calls:
+                                yield {
+                                    "type": "tool_calls",
+                                    "tool_calls": accumulated_tool_calls,
+                                }
+                            break
+
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"解析Ollama流式响应失败: {e}")
+                        continue
+
+            logger.debug(f"Ollama流式响应完成: {len(accumulated_content)} 字符")
+
+        except Exception as e:
+            logger.error(f"Ollama流式调用失败: {e}")
+            yield {"type": "error", "error": str(e)}
+
+
 class OpenAIProvider(ModelProvider):
     """OpenAI模型提供商。"""
 
@@ -530,12 +755,33 @@ class AnthropicProvider(ModelProvider):
         return "anthropic"
 
 
+class OllamaProvider(ModelProvider):
+    """Ollama模型提供商。"""
+
+    def __init__(self, config: LLMSettings):
+        """初始化Ollama提供商。
+
+        Args:
+            config: LLM配置
+        """
+        self.config = config
+
+    async def create_session(self) -> LLMSessionInterface:
+        """创建Ollama会话。"""
+        return OllamaSession(self.config)
+
+    def get_provider_name(self) -> str:
+        """获取提供商名称。"""
+        return "ollama"
+
+
 class ModelProviderFactory:
     """模型提供商工厂类。"""
 
     _providers = {
         "openai": OpenAIProvider,
         "anthropic": AnthropicProvider,
+        "ollama": OllamaProvider,
     }
 
     @classmethod

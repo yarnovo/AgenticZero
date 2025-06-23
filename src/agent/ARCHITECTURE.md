@@ -140,6 +140,11 @@ async def process_input_stream(
 - **工厂模式**：ModelProviderFactory负责创建提供商实例
 - **异步迭代器模式**：实现流式响应的异步数据流
 
+**支持的模型提供商**：
+- **OpenAI**: 使用 OpenAI API (GPT系列模型)
+- **Anthropic**: 使用 Anthropic API (Claude系列模型)  
+- **Ollama**: 使用本地部署的开源模型 (Llama、Qwen等)
+
 **流式响应实现**：
 ```python
 async def chat_stream(
@@ -147,6 +152,12 @@ async def chat_stream(
     tools: list[dict[str, Any]] | None = None
 ) -> AsyncIterator[dict[str, Any]]
 ```
+
+**Ollama 本地模型支持**：
+- 基于 HTTP REST API 与 Ollama 服务通信
+- 支持所有 Ollama 兼容的开源模型
+- 提供完全本地化的AI能力，保护数据隐私
+- 支持流式响应和工具调用（限支持的模型）
 
 ### 3. MCP Session Manager（MCP会话管理）
 
