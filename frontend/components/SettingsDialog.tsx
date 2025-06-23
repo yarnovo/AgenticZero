@@ -20,14 +20,13 @@ import {
 } from '@/components/ui/card'
 import { 
   Settings, 
-  Key, 
-  Globe, 
-  Server, 
   Check, 
   AlertTriangle,
   Eye,
   EyeOff
 } from 'lucide-react'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { useSettingsStore, type ApiProvider } from '@/stores/useSettingsStore'
 
 interface SettingsDialogProps {
@@ -99,30 +98,34 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
           {/* 当前活跃提供商 */}
           <div>
             <h3 className="text-lg font-medium mb-3">当前使用的提供商</h3>
-            <div className="flex gap-2">
+            <RadioGroup
+              value={activeProvider}
+              onValueChange={(value) => setActiveProvider(value as ApiProvider)}
+              className="flex gap-6"
+            >
               {(['openai', 'anthropic', 'ollama'] as ApiProvider[]).map((provider) => (
-                <Button
-                  key={provider}
-                  variant={activeProvider === provider ? "default" : "outline"}
-                  onClick={() => setActiveProvider(provider)}
-                  className="capitalize"
-                >
-                  {provider === 'openai' && 'OpenAI'}
-                  {provider === 'anthropic' && 'Anthropic'}
-                  {provider === 'ollama' && 'Ollama'}
-                  {validateApiConfig(provider) && (
-                    <Check className="w-4 h-4 ml-2 text-green-500" />
-                  )}
-                </Button>
+                <div key={provider} className="flex items-center space-x-2">
+                  <RadioGroupItem value={provider} id={provider} />
+                  <label 
+                    htmlFor={provider} 
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+                  >
+                    {provider === 'openai' && 'OpenAI'}
+                    {provider === 'anthropic' && 'Anthropic'}
+                    {provider === 'ollama' && 'Ollama'}
+                    {validateApiConfig(provider) && (
+                      <Check className="w-4 h-4 text-green-500" />
+                    )}
+                  </label>
+                </div>
               ))}
-            </div>
+            </RadioGroup>
           </div>
 
           {/* OpenAI 配置 */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Key className="w-5 h-5" />
+              <CardTitle>
                 OpenAI 配置
               </CardTitle>
               <CardDescription>
@@ -188,8 +191,7 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
           {/* Anthropic 配置 */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="w-5 h-5" />
+              <CardTitle>
                 Anthropic 配置
               </CardTitle>
               <CardDescription>
@@ -255,8 +257,7 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
           {/* Ollama 配置 */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Server className="w-5 h-5" />
+              <CardTitle>
                 Ollama 配置
               </CardTitle>
               <CardDescription>
@@ -314,17 +315,13 @@ export default function SettingsDialog({ open, onOpenChange }: SettingsDialogPro
           </Card>
 
           {/* 安全提示 */}
-          <Card className="border-yellow-200 bg-yellow-50">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                <div className="text-sm text-yellow-800">
-                  <p className="font-medium mb-1">安全提示</p>
-                  <p>API 密钥将被安全地存储在你的浏览器本地存储中。请不要在不受信任的设备上输入你的 API 密钥。</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>安全提示</AlertTitle>
+            <AlertDescription>
+              API 密钥将被安全地存储在你的浏览器本地存储中。请不要在不受信任的设备上输入你的 API 密钥。
+            </AlertDescription>
+          </Alert>
         </div>
 
         {/* 操作按钮 */}
