@@ -1,70 +1,167 @@
-import Link from 'next/link'
+'use client'
+
+import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { GraduationCap, Users } from 'lucide-react'
-import Header from '@/components/Header'
+import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Send, Plus, Menu, MessageSquare } from 'lucide-react'
+import { MessageList, useMessageList, type VirtuosoMessage, type VirtuosoMessageListProps } from '@/components/MessageList'
+
+// 自定义消息内容组件
+const CustomItemContent: VirtuosoMessageListProps<VirtuosoMessage, null>['ItemContent'] = ({ data }) => {
+  const isOwnMessage = data.user === 'me'
+  return (
+    <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} mb-4`}>
+      <div
+        className={`max-w-[70%] rounded-lg px-4 py-2 ${
+          isOwnMessage
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-muted'
+        }`}
+      >
+        <p className="text-sm">{data.text}</p>
+        {data.timestamp && (
+          <p className="text-xs opacity-70 mt-1">
+            {new Date(data.timestamp).toLocaleTimeString()}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function Home() {
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
+  const [inputValue, setInputValue] = useState('')
+  const [conversations, setConversations] = useState([
+    { id: '1', title: '新对话', active: true }
+  ])
+  const [activeConversationId, setActiveConversationId] = useState('1')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const { ref: messageListRef, sendMessage, receiveMessage } = useMessageList()
+
+  // 初始化欢迎消息
+  useEffect(() => {
+    setTimeout(() => {
+      receiveMessage?.('你好！我是 AgenticZero AI 助手。有什么可以帮助你的吗？')
+    }, 500)
+  }, [])
+
+  const handleSendMessage = () => {
+    if (inputValue.trim()) {
+      // 发送用户消息
+      sendMessage?.(inputValue)
+      setInputValue('')
       
-      <div className="container mx-auto px-4 py-16 flex items-center justify-center min-h-screen">
-        <div className="max-w-4xl w-full text-center">
-          <h1 className="text-6xl md:text-7xl font-bold mb-8 text-foreground">
-            师承×学成
-          </h1>
-          
-          <p className="text-3xl md:text-4xl mb-12 text-muted-foreground">
-            和AI一起，学有所成
-          </p>
-          
-          <p className="text-xl mb-16 text-muted-foreground max-w-2xl mx-auto">
-            创新的B→AI→C教育模式，让知识创作者培养AI助教，让学习者获得个性化指导
-          </p>
-          
-          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-            <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border">
-              <CardContent className="p-8">
-                <div className="mb-6">
-                  <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto">
-                    <GraduationCap className="w-10 h-10 text-foreground" />
+      // 模拟AI回复
+      setTimeout(() => {
+        receiveMessage?.('这是AI的回复。我正在处理您的请求...')
+      }, 1000)
+    }
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSendMessage()
+    }
+  }
+
+  const startNewConversation = () => {
+    const newId = Date.now().toString()
+    const newConversation = {
+      id: newId,
+      title: '新对话',
+      active: true
+    }
+    setConversations([...conversations, newConversation])
+    setActiveConversationId(newId)
+    // 清空消息列表需要重新实现
+    window.location.reload() // 临时解决方案
+  }
+
+  return (
+    <div className="flex h-screen bg-background">
+      {/* 侧边栏 */}
+      <div className={`${isSidebarOpen ? 'w-64' : 'w-0'} transition-all duration-300 bg-muted border-r border-border overflow-hidden`}>
+        <div className="p-4">
+          <Button 
+            onClick={startNewConversation} 
+            className="w-full mb-4 justify-start"
+            variant="outline"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            新对话
+          </Button>
+          <ScrollArea className="h-[calc(100vh-120px)]">
+            <div className="space-y-2">
+              {conversations.map((conv) => (
+                <div
+                  key={conv.id}
+                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                    conv.id === activeConversationId
+                      ? 'bg-background border border-border'
+                      : 'hover:bg-background/50'
+                  }`}
+                  onClick={() => {
+                    setActiveConversationId(conv.id)
+                    // 切换对话需要重新实现
+                  }}
+                >
+                  <div className="flex items-center">
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    <span className="text-sm truncate">{conv.title}</span>
                   </div>
                 </div>
-                <h2 className="text-2xl font-bold mb-4 text-foreground">我是知识创作者</h2>
-                <p className="text-muted-foreground mb-6">
-                  培养您的AI助教，让知识传承规模化，服务更多学生
-                </p>
-                <Link href="/creator">
-                  <Button size="lg" className="w-full">
-                    进入师承系统
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-            
-            <Card className="hover:shadow-lg transition-all duration-300 hover:-translate-y-1 border">
-              <CardContent className="p-8">
-                <div className="mb-6">
-                  <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto">
-                    <Users className="w-10 h-10 text-foreground" />
-                  </div>
-                </div>
-                <h2 className="text-2xl font-bold mb-4 text-foreground">我是知识学习者</h2>
-                <p className="text-muted-foreground mb-6">
-                  选择AI教练，获得个性化指导，实现学习目标
-                </p>
-                <Link href="/learner">
-                  <Button size="lg" className="w-full">
-                    进入学成系统
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+      </div>
+
+      {/* 主聊天区域 */}
+      <div className="flex-1 flex flex-col">
+        {/* 顶部栏 */}
+        <div className="h-14 border-b border-border flex items-center px-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <h1 className="ml-4 text-lg font-semibold">AgenticZero Chat</h1>
+        </div>
+
+        {/* 消息区域 */}
+        <div className="flex-1 overflow-hidden p-4">
+          <div className="max-w-3xl mx-auto h-full">
+            <MessageList
+              ref={messageListRef}
+              style={{ height: '100%' }}
+              licenseKey="" // 如果需要许可证密钥，请在此处添加
+              ItemContent={CustomItemContent}
+            />
           </div>
-          
-          <div className="mt-16 text-sm text-muted-foreground">
-            <p>已有 <span className="font-bold text-foreground">1,000+</span> 知识创作者和 <span className="font-bold text-foreground">10,000+</span> 学习者加入我们</p>
+        </div>
+
+        {/* 输入区域 */}
+        <div className="border-t border-border p-4">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex gap-2">
+              <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="输入消息..."
+                className="flex-1"
+              />
+              <Button onClick={handleSendMessage} disabled={!inputValue.trim()}>
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              AgenticZero 可能会产生错误信息。请核实重要信息。
+            </p>
           </div>
         </div>
       </div>

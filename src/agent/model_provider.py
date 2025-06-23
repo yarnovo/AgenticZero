@@ -1,7 +1,9 @@
 """模型提供商模块，提供与不同大模型提供商的集成。"""
 
+import json
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import AsyncIterator
 from typing import Any
 
 from .llm_session_manager import LLMSessionInterface
@@ -131,6 +133,112 @@ class OpenAISession(LLMSessionInterface):
             logger.error(f"OpenAI调用失败: {e}")
             raise
 
+    async def chat_stream(
+        self,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, Any]] | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """与OpenAI模型进行流式对话。
+
+        Args:
+            messages: 消息列表
+            tools: 可用工具列表
+
+        Yields:
+            模型响应片段
+
+        Raises:
+            RuntimeError: 会话未初始化时抛出
+        """
+        if not self._initialized or not self.client:
+            raise RuntimeError("OpenAI会话未初始化")
+
+        try:
+            # 构建请求参数
+            request_params = {
+                "model": self.config.model,
+                "messages": messages,
+                "temperature": self.config.temperature,
+                "max_tokens": self.config.max_tokens,
+                "stream": True,  # 启用流式响应
+            }
+
+            # 如果有工具，添加工具参数
+            if tools:
+                request_params["tools"] = tools
+                request_params["tool_choice"] = "auto"
+
+            # 调用OpenAI API
+            stream = await self.client.chat.completions.create(**request_params)
+
+            # 处理流式响应
+            accumulated_content = ""
+            accumulated_tool_calls = []
+
+            async for chunk in stream:
+                delta = chunk.choices[0].delta
+
+                # 处理内容片段
+                if delta.content:
+                    accumulated_content += delta.content
+                    yield {"type": "content", "content": delta.content}
+
+                # 处理工具调用
+                if delta.tool_calls:
+                    for tool_call in delta.tool_calls:
+                        # OpenAI 流式工具调用需要累积
+                        if tool_call.index < len(accumulated_tool_calls):
+                            # 更新现有工具调用
+                            existing = accumulated_tool_calls[tool_call.index]
+                            if tool_call.function.name:
+                                existing["function"]["name"] = tool_call.function.name
+                            if tool_call.function.arguments:
+                                existing["function"]["arguments"] += (
+                                    tool_call.function.arguments
+                                )
+                        else:
+                            # 新的工具调用
+                            accumulated_tool_calls.append(
+                                {
+                                    "type": "function",
+                                    "function": {
+                                        "name": tool_call.function.name or "",
+                                        "arguments": tool_call.function.arguments or "",
+                                    },
+                                }
+                            )
+
+                # 检查是否完成
+                if (
+                    chunk.choices[0].finish_reason == "tool_calls"
+                    and accumulated_tool_calls
+                ):
+                    # 解析完整的工具调用参数
+                    parsed_tool_calls = []
+                    for tc in accumulated_tool_calls:
+                        try:
+                            parsed_tool_calls.append(
+                                {
+                                    "type": "function",
+                                    "function": {
+                                        "name": tc["function"]["name"],
+                                        "arguments": tc["function"]["arguments"],
+                                    },
+                                }
+                            )
+                        except Exception as e:
+                            logger.error(f"解析工具调用参数失败: {e}")
+                            yield {"type": "error", "error": f"工具调用解析失败: {e}"}
+
+                    if parsed_tool_calls:
+                        yield {"type": "tool_calls", "tool_calls": parsed_tool_calls}
+
+            logger.debug(f"OpenAI流式响应完成: {len(accumulated_content)} 字符")
+
+        except Exception as e:
+            logger.error(f"OpenAI流式调用失败: {e}")
+            yield {"type": "error", "error": str(e)}
+
 
 class AnthropicSession(LLMSessionInterface):
     """Anthropic大模型会话实现。"""
@@ -259,6 +367,127 @@ class AnthropicSession(LLMSessionInterface):
         except Exception as e:
             logger.error(f"Anthropic调用失败: {e}")
             raise
+
+    async def chat_stream(
+        self,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, Any]] | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """与Anthropic模型进行流式对话。
+
+        Args:
+            messages: 消息列表
+            tools: 可用工具列表
+
+        Yields:
+            模型响应片段
+
+        Raises:
+            RuntimeError: 会话未初始化时抛出
+        """
+        if not self._initialized or not self.client:
+            raise RuntimeError("Anthropic会话未初始化")
+
+        try:
+            # 分离系统消息和其他消息
+            system_message = ""
+            chat_messages = []
+
+            for msg in messages:
+                if msg["role"] == "system":
+                    system_message = msg["content"]
+                else:
+                    chat_messages.append(msg)
+
+            # 构建请求参数
+            request_params = {
+                "model": self.config.model,
+                "messages": chat_messages,
+                "max_tokens": self.config.max_tokens,
+                "temperature": self.config.temperature,
+                "stream": True,  # 启用流式响应
+            }
+
+            if system_message:
+                request_params["system"] = system_message
+
+            # 如果有工具，添加工具参数
+            if tools:
+                # 转换工具格式为Anthropic格式
+                anthropic_tools = []
+                for tool in tools:
+                    if tool.get("type") == "function":
+                        func = tool["function"]
+                        anthropic_tools.append(
+                            {
+                                "name": func["name"],
+                                "description": func["description"],
+                                "input_schema": func["parameters"],
+                            }
+                        )
+
+                request_params["tools"] = anthropic_tools
+
+            # 调用Anthropic API
+            accumulated_content = ""
+
+            async with self.client.messages.stream(**request_params) as stream:
+                async for event in stream:
+                    # 处理不同类型的事件
+                    if event.type == "content_block_start":
+                        # 内容块开始
+                        if event.content_block.type == "text":
+                            # 文本内容块开始
+                            pass
+                        elif event.content_block.type == "tool_use":
+                            # 工具使用块开始
+                            pass
+
+                    elif event.type == "content_block_delta":
+                        # 内容块增量更新
+                        if event.delta.type == "text_delta":
+                            # 文本增量
+                            accumulated_content += event.delta.text
+                            yield {"type": "content", "content": event.delta.text}
+                        elif event.delta.type == "input_json_delta":
+                            # 工具输入增量（JSON）
+                            pass
+
+                    elif event.type == "content_block_stop":
+                        # 内容块结束
+                        if (
+                            hasattr(event, "content_block")
+                            and event.content_block.type == "tool_use"
+                        ):
+                            # 工具调用完成
+                            yield {
+                                "type": "tool_calls",
+                                "tool_calls": [
+                                    {
+                                        "type": "function",
+                                        "function": {
+                                            "name": event.content_block.name,
+                                            "arguments": json.dumps(
+                                                event.content_block.input
+                                            )
+                                            if isinstance(
+                                                event.content_block.input, dict
+                                            )
+                                            else event.content_block.input,
+                                        },
+                                    }
+                                ],
+                            }
+
+                    elif event.type == "message_stop":
+                        # 消息结束
+                        logger.debug(
+                            f"Anthropic流式响应完成: {len(accumulated_content)} 字符"
+                        )
+
+        except Exception as e:
+            logger.error(f"Anthropic流式调用失败: {e}")
+            yield {"type": "error", "error": str(e)}
 
 
 class OpenAIProvider(ModelProvider):

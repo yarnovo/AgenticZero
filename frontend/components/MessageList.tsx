@@ -182,3 +182,4 @@ export function useVirtuosoMessageList(initialMessages: VirtuosoMessage[] = []) 
 export type Message = VirtuosoMessage
 export const MessageList = VirtuosoMessageListWrapper
 export const useMessageList = useVirtuosoMessageList
+export type { VirtuosoMessageListProps }

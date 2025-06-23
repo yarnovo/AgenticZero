@@ -100,6 +100,12 @@ async def process_input(
     conversation_id: str, 
     max_iterations: int | None = None
 ) -> str
+
+async def process_input_stream(
+    user_input: str,
+    conversation_id: str,
+    max_iterations: int | None = None
+) -> AsyncIterator[dict[str, Any]]
 ```
 
 **自驱动流程**：
@@ -111,16 +117,36 @@ async def process_input(
 6. 更新上下文
 7. 重复3-6直到无工具调用或达到最大迭代次数
 
+**流式响应支持**：
+- 支持实时流式输出LLM响应
+- 流式事件类型：
+  - `content`: 内容片段
+  - `tool_call`: 工具调用信息
+  - `tool_result`: 工具执行结果
+  - `iteration`: 迭代进度
+  - `complete`: 完成标记
+  - `error`: 错误信息
+
 ### 2. LLM Session Manager（大模型会话管理）
 
 **职责**：
 - 管理与大模型的会话生命周期
 - 统一不同模型提供商的接口
 - 处理连接失败和重试逻辑
+- 支持流式和非流式响应
 
 **设计模式**：
 - **策略模式**：通过ModelProvider抽象不同的模型实现
 - **工厂模式**：ModelProviderFactory负责创建提供商实例
+- **异步迭代器模式**：实现流式响应的异步数据流
+
+**流式响应实现**：
+```python
+async def chat_stream(
+    messages: list[dict[str, str]],
+    tools: list[dict[str, Any]] | None = None
+) -> AsyncIterator[dict[str, Any]]
+```
 
 ### 3. MCP Session Manager（MCP会话管理）
 
@@ -214,6 +240,37 @@ flowchart TD
     O --> K
     I -->|无工具调用| K
     K --> L[返回最终响应]
+```
+
+### 1.2 流式响应数据流
+
+```mermaid
+graph TD
+    A[用户输入] --> B[Agent.run_stream]
+    B --> C[CoreEngine.process_input_stream]
+    C --> D[获取/创建会话上下文]
+    D --> E[流式迭代开始]
+    
+    E --> F{发送迭代信息}
+    F --> G[LLMSessionManager.chat_stream]
+    G --> H[ModelProvider.chat_stream]
+    
+    H --> I{流式响应片段}
+    I -->|content| J[发送内容片段]
+    I -->|tool_calls| K[收集工具调用]
+    I -->|error| L[发送错误信息]
+    
+    J --> M{响应完成?}
+    K --> N[执行工具调用]
+    N --> O[发送工具结果]
+    
+    M -->|否| I
+    M -->|是| P{有工具调用?}
+    P -->|是| Q[更新上下文]
+    P -->|否| R[发送完成标记]
+    
+    Q --> E
+    R --> S[结束流式响应]
 ```
 
 ### 2. 会话状态管理

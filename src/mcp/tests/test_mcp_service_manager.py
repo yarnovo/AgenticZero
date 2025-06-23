@@ -236,8 +236,12 @@ class TestMCPServiceManager:
         """测试复杂的服务交互"""
         # 创建 Python 和 Graph 服务
         await service_manager.handle_call_tool(
-            "service_create", 
-            {"service_type": "python", "service_id": "py_service", "config": {"base_dir": temp_dir}}
+            "service_create",
+            {
+                "service_type": "python",
+                "service_id": "py_service",
+                "config": {"base_dir": temp_dir},
+            },
         )
         await service_manager.handle_call_tool(
             "service_create", {"service_type": "graph", "service_id": "graph_service"}

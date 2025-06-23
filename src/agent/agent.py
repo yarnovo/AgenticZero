@@ -1,6 +1,7 @@
 """智能体实现，提供简单的输入输出接口。"""
 
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -146,6 +147,29 @@ class Agent:
         return await self.core_engine.process_input(
             user_input, self.conversation_id, max_iterations
         )
+
+    async def run_stream(
+        self, user_input: str, max_iterations: int | None = None
+    ) -> AsyncIterator[dict[str, Any]]:
+        """以流式方式运行智能体处理用户输入。
+
+        Args:
+            user_input: 用户输入
+            max_iterations: 最大迭代次数（可选）
+
+        Yields:
+            流式响应片段，包含：
+            - {"type": "content", "content": str} - 内容片段
+            - {"type": "tool_call", "tool": str, "arguments": dict} - 工具调用
+            - {"type": "tool_result", "tool": str, "result": dict} - 工具结果
+            - {"type": "iteration", "current": int, "max": int} - 迭代信息
+            - {"type": "complete", "final_response": str} - 完成标记
+            - {"type": "error", "error": str} - 错误信息
+        """
+        async for chunk in self.core_engine.process_input_stream(
+            user_input, self.conversation_id, max_iterations
+        ):
+            yield chunk
 
     async def get_status(self) -> dict[str, Any]:
         """获取智能体状态。

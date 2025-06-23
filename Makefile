@@ -1,33 +1,51 @@
-.PHONY: help test lint type-check format format-check clean install dev-install all check api api-dev api-reload frontend-dev frontend-build frontend-start frontend-install frontend-clean
+.PHONY: help test lint type-check format format-check clean install dev-install all check api api-dev api-reload frontend-dev frontend-build frontend-start frontend-install frontend-clean frontend-lint storybook storybook-build db-generate db-push db-migrate db-migrate-deploy db-migrate-reset db-studio db-seed db-format db-validate
 
 # 默认目标
 .DEFAULT_GOAL := help
 
 # 帮助命令
 help:
-	@echo "Available commands:"
-	@echo "  make install       Install production dependencies"
-	@echo "  make dev-install   Install all dependencies (including dev)"
-	@echo "  make test          Run tests with coverage"
-	@echo "  make lint          Run ruff linter"
-	@echo "  make type-check    Run pyright type checker"
-	@echo "  make format        Format code with ruff"
-	@echo "  make format-check  Check code formatting without changes"
-	@echo "  make check         Run all checks (lint, type-check, format-check, test)"
-	@echo "  make clean         Clean up cache and build files"
-	@echo "  make all           Run format, lint, type-check, and test"
+	@echo "=== 可用命令 ==="
 	@echo ""
-	@echo "API commands:"
-	@echo "  make api           Run API server in production mode"
-	@echo "  make api-dev       Run API server in development mode with reload"
-	@echo "  make api-reload    Run API server with auto-reload (alias for api-dev)"
+	@echo "基础命令:"
+	@echo "  make install       安装生产环境依赖"
+	@echo "  make dev-install   安装所有依赖（包括开发依赖）"
+	@echo "  make test          运行测试并生成覆盖率报告"
+	@echo "  make lint          运行 ruff 代码检查"
+	@echo "  make type-check    运行 pyright 类型检查"
+	@echo "  make format        使用 ruff 格式化代码"
+	@echo "  make format-check  检查代码格式（不修改）"
+	@echo "  make check         运行所有检查 (lint, type-check, format-check, test)"
+	@echo "  make clean         清理缓存和构建文件"
+	@echo "  make all           运行格式化、lint 修复、类型检查和测试"
 	@echo ""
-	@echo "Frontend commands:"
-	@echo "  make frontend-install  Install frontend dependencies"
-	@echo "  make frontend-dev      Run frontend in development mode"
-	@echo "  make frontend-build    Build frontend for production"
-	@echo "  make frontend-start    Start frontend in production mode"
-	@echo "  make frontend-clean    Clean frontend build files"
+	@echo "API 相关命令:"
+	@echo "  make api           生产模式运行 API 服务器"
+	@echo "  make api-dev       开发模式运行 API 服务器（带自动重载）"
+	@echo "  make api-reload    自动重载模式运行 API（api-dev 的别名）"
+	@echo ""
+	@echo "前端相关命令:"
+	@echo "  make frontend-install  安装前端依赖"
+	@echo "  make frontend-dev      开发模式运行前端"
+	@echo "  make frontend-build    构建前端生产版本"
+	@echo "  make frontend-start    生产模式运行前端"
+	@echo "  make frontend-lint     运行前端代码检查"
+	@echo "  make frontend-clean    清理前端构建文件"
+	@echo ""
+	@echo "Storybook 相关命令:"
+	@echo "  make storybook         启动 Storybook 开发服务器"
+	@echo "  make storybook-build   构建 Storybook 静态文件"
+	@echo ""
+	@echo "数据库相关命令:"
+	@echo "  make db-generate       生成 Prisma 客户端"
+	@echo "  make db-push           推送数据库架构变更"
+	@echo "  make db-migrate        创建并应用开发环境迁移"
+	@echo "  make db-migrate-deploy 部署生产环境迁移"
+	@echo "  make db-migrate-reset  重置数据库和迁移"
+	@echo "  make db-studio         打开 Prisma Studio 数据库管理界面"
+	@echo "  make db-seed           运行数据库种子脚本"
+	@echo "  make db-format         格式化 Prisma schema 文件"
+	@echo "  make db-validate       验证 Prisma schema 文件"
 
 # 安装依赖
 install:
@@ -148,3 +166,53 @@ frontend-start:
 # 清理前端构建文件
 frontend-clean:
 	cd frontend && rm -rf .next node_modules
+
+# 运行前端代码检查
+frontend-lint:
+	cd frontend && npm run lint
+
+# Storybook 相关命令
+# 启动 Storybook 开发服务器
+storybook:
+	cd frontend && npm run storybook
+
+# 构建 Storybook 静态文件
+storybook-build:
+	cd frontend && npm run build-storybook
+
+# 数据库相关命令
+# 生成 Prisma 客户端
+db-generate:
+	cd frontend && npm run db:generate
+
+# 推送数据库架构变更
+db-push:
+	cd frontend && npm run db:push
+
+# 创建并应用开发环境迁移
+db-migrate:
+	cd frontend && npm run db:migrate
+
+# 部署生产环境迁移
+db-migrate-deploy:
+	cd frontend && npm run db:migrate:deploy
+
+# 重置数据库和迁移
+db-migrate-reset:
+	cd frontend && npm run db:migrate:reset
+
+# 打开 Prisma Studio 数据库管理界面
+db-studio:
+	cd frontend && npm run db:studio
+
+# 运行数据库种子脚本
+db-seed:
+	cd frontend && npm run db:seed
+
+# 格式化 Prisma schema 文件
+db-format:
+	cd frontend && npm run db:format
+
+# 验证 Prisma schema 文件
+db-validate:
+	cd frontend && npm run db:validate

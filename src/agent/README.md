@@ -127,6 +127,58 @@ async def main():
 asyncio.run(main())
 ```
 
+### 使用流式响应
+
+智能体支持流式响应，适合需要实时反馈的场景：
+
+```python
+import asyncio
+from agent import Agent, AgentSettings, LLMSettings
+
+async def main():
+    settings = AgentSettings(
+        name="stream_agent",
+        instruction="你是一个友好的AI助手。",
+        llm_settings=LLMSettings(
+            provider="openai",
+            api_key="your-openai-key",
+            model="gpt-3.5-turbo"
+        )
+    )
+    
+    async with Agent(settings).connect() as agent:
+        # 使用流式响应
+        print("助手：", end="", flush=True)
+        async for chunk in agent.run_stream("请详细解释一下机器学习的基本概念"):
+            # 处理不同类型的流式响应片段
+            if chunk["type"] == "content":
+                # 实时打印内容片段
+                print(chunk["content"], end="", flush=True)
+            elif chunk["type"] == "tool_call":
+                # 工具调用信息
+                print(f"\n[调用工具: {chunk['tool']}]")
+            elif chunk["type"] == "tool_result":
+                # 工具执行结果
+                print(f"\n[工具结果: {chunk['result']}]")
+            elif chunk["type"] == "iteration":
+                # 迭代信息（自驱动循环）
+                print(f"\n[迭代 {chunk['current']}/{chunk['max']}]")
+            elif chunk["type"] == "complete":
+                # 完成标记
+                print(f"\n[完成，共{chunk['iterations']}次迭代]")
+            elif chunk["type"] == "error":
+                # 错误信息
+                print(f"\n[错误: {chunk['error']}]")
+
+asyncio.run(main())
+```
+
+流式响应的优势：
+- **实时反馈**：用户可以立即看到智能体的思考过程
+- **更好的用户体验**：长回复时不需要等待全部完成
+- **透明的工具调用**：可以看到智能体调用了哪些工具
+- **可中断性**：可以随时停止生成
+
 ### 使用记忆功能
 
 智能体内置了记忆系统，可以存储和回忆重要信息：

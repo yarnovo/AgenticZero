@@ -3,6 +3,7 @@
 import json
 import logging
 import re
+from collections.abc import AsyncIterator
 from typing import Any
 
 from .llm_session_manager import LLMSessionManager
@@ -170,6 +171,148 @@ class CoreEngine:
         logger.info(f"处理完成，共执行 {iteration} 次迭代")
         return final_response
 
+    async def process_input_stream(
+        self,
+        user_input: str,
+        conversation_id: str,
+        max_iterations: int | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """以流式方式处理用户输入，自驱动执行直到完成。
+
+        Args:
+            user_input: 用户输入
+            conversation_id: 对话ID
+            max_iterations: 最大迭代次数（覆盖默认值）
+
+        Yields:
+            流式响应片段，包含：
+            - {"type": "content", "content": str} - 内容片段
+            - {"type": "tool_call", "tool": str, "arguments": dict} - 工具调用
+            - {"type": "tool_result", "tool": str, "result": dict} - 工具结果
+            - {"type": "iteration", "current": int, "max": int} - 迭代信息
+            - {"type": "complete", "final_response": str} - 完成标记
+
+        Raises:
+            RuntimeError: 引擎未初始化时抛出
+        """
+        if not self._initialized:
+            raise RuntimeError("核心引擎未初始化，请先调用 initialize() 方法")
+
+        max_iterations = max_iterations or self.max_iterations
+        logger.info(
+            f"开始流式处理用户输入，对话ID: {conversation_id}，最大迭代: {max_iterations}"
+        )
+
+        # 获取或创建会话上下文
+        context = await self.context_manager.get_context(conversation_id)
+        if not context:
+            context = await self.context_manager.create_context(conversation_id)
+
+        # 添加用户消息到上下文
+        context.add_message("user", user_input)
+
+        # 获取可用工具
+        available_tools = await self.mcp_session_manager.list_all_tools()
+        formatted_tools = self._format_tools_for_llm(available_tools)
+
+        # 自驱动循环
+        iteration = 0
+        accumulated_response = ""
+
+        while iteration < max_iterations:
+            iteration += 1
+            logger.debug(f"自驱动迭代 {iteration}/{max_iterations}")
+
+            # 发送迭代信息
+            yield {"type": "iteration", "current": iteration, "max": max_iterations}
+
+            # 获取当前上下文消息
+            messages = context.get_current_messages()
+
+            # 流式调用大模型
+            current_content = ""
+            tool_calls = []
+
+            async for chunk in self._call_llm_stream(messages, formatted_tools):
+                if chunk["type"] == "content":
+                    # 累积内容并向外发送
+                    current_content += chunk["content"]
+                    yield chunk
+                elif chunk["type"] == "tool_calls":
+                    # 收集工具调用
+                    tool_calls.extend(chunk["tool_calls"])
+                elif chunk["type"] == "error":
+                    # 转发错误
+                    yield chunk
+
+            # 添加助手响应到上下文
+            if current_content:
+                context.add_message("assistant", current_content)
+                accumulated_response = current_content
+
+            # 检查是否有工具调用
+            if not tool_calls:
+                logger.debug("无工具调用，自驱动结束")
+                break
+
+            # 解析并发送工具调用信息
+            parsed_tool_calls = []
+            for tc in tool_calls:
+                if tc.get("type") == "function":
+                    function = tc.get("function", {})
+                    name = function.get("name", "")
+                    arguments_str = function.get("arguments", "{}")
+
+                    try:
+                        arguments = (
+                            json.loads(arguments_str)
+                            if isinstance(arguments_str, str)
+                            else arguments_str
+                        )
+                    except json.JSONDecodeError:
+                        logger.warning(f"无法解析工具参数: {arguments_str}")
+                        arguments = {}
+
+                    parsed_tool_calls.append(ToolCall(name, arguments))
+
+                    # 发送工具调用信息
+                    yield {"type": "tool_call", "tool": name, "arguments": arguments}
+
+            # 执行工具调用
+            tool_results = await self._execute_tool_calls(parsed_tool_calls)
+
+            # 发送工具结果并添加到上下文
+            if tool_results:
+                for result in tool_results:
+                    # 发送工具结果
+                    yield {
+                        "type": "tool_result",
+                        "tool": result["tool"],
+                        "success": result["success"],
+                        "result": result.get("result")
+                        if result["success"]
+                        else result.get("error"),
+                    }
+
+                # 格式化并添加到上下文
+                tool_results_message = self._format_tool_results(tool_results)
+                context.add_message("tool", tool_results_message)
+
+        if iteration >= max_iterations:
+            logger.warning(f"达到最大迭代次数 ({max_iterations})")
+
+        # 保存上下文
+        await self.context_manager.update_context(context)
+
+        # 发送完成标记
+        yield {
+            "type": "complete",
+            "final_response": accumulated_response,
+            "iterations": iteration,
+        }
+
+        logger.info(f"流式处理完成，共执行 {iteration} 次迭代")
+
     async def _call_llm(
         self,
         messages: list[dict[str, str]],
@@ -194,6 +337,26 @@ class CoreEngine:
         tool_calls = self._parse_tool_calls(response)
 
         return LLMResponse(content, tool_calls)
+
+    async def _call_llm_stream(
+        self,
+        messages: list[dict[str, str]],
+        tools: list[dict[str, Any]] | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """流式调用大模型。
+
+        Args:
+            messages: 消息列表
+            tools: 可用工具列表
+
+        Yields:
+            流式响应片段
+        """
+        logger.debug(f"流式调用大模型，消息数: {len(messages)}")
+
+        # 调用大模型会话管理器的流式接口
+        async for chunk in self.llm_session_manager.chat_stream(messages, tools):
+            yield chunk
 
     def _parse_tool_calls(self, llm_response: dict[str, Any]) -> list[ToolCall]:
         """解析LLM响应中的工具调用。
