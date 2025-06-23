@@ -1,4 +1,4 @@
-"""文件管理模块核心接口和基础类"""
+"""文件系统模块核心接口和基础类"""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass

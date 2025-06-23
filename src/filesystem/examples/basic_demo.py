@@ -1,4 +1,4 @@
-"""文件管理模块基础功能演示"""
+"""文件系统模块基础功能演示"""
 
 import tempfile
 
@@ -8,7 +8,7 @@ from ..local_filesystem import LocalFileSystem
 
 def basic_operations_demo():
     """基础文件操作演示"""
-    print("=== 文件管理模块基础操作演示 ===\n")
+    print("=== 文件系统模块基础操作演示 ===\n")
 
     # 创建临时目录用于演示
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -27,7 +27,7 @@ def basic_operations_demo():
 
         # 2. 写入文件
         print("2. 写入文件")
-        manager.write_text("README.md", "# 文件管理模块演示\n\n这是一个演示项目。")
+        manager.write_text("README.md", "# 文件系统模块演示\n\n这是一个演示项目。")
         manager.write_text("src/main.py", "def main():\n    print('Hello, World!')\n")
         manager.write_text(
             "src/utils/helper.py", "def helper_function():\n    return '辅助函数'"

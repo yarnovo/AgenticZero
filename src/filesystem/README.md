@@ -1,8 +1,8 @@
-# 文件管理模块 (File Manager)
+# 文件系统模块 (Filesystem)
 
 ## 简介
 
-文件管理模块是一个提供统一文件系统操作API的Python库。它通过抽象层设计，支持多种文件系统后端（本地文件系统、云存储等），为应用程序提供一致、可靠的文件操作接口。
+文件系统模块是一个提供统一文件系统操作API的Python库。它通过抽象层设计，支持多种文件系统后端（本地文件系统、云存储等），为应用程序提供一致、可靠的文件操作接口。
 
 ## 核心特性
 
@@ -32,7 +32,7 @@
 ### 基本用法
 
 ```python
-from src.file_manager import FileManager, LocalFileSystem
+from src.filesystem import FileManager, LocalFileSystem
 
 # 初始化文件管理器
 fs = LocalFileSystem("/path/to/workspace")  # 限制在指定目录
@@ -157,7 +157,7 @@ if success:
 - `InvalidPathError` - 无效路径异常
 
 ```python
-from src.file_manager.exceptions import FileNotFoundError, PermissionError
+from src.filesystem.exceptions import FileNotFoundError, PermissionError
 
 try:
     content = manager.read_text("nonexistent.txt")
@@ -174,7 +174,7 @@ except PermissionError as e:
 要实现自定义的文件系统后端，需要继承`FileSystemInterface`接口：
 
 ```python
-from src.file_manager.core import FileSystemInterface
+from src.filesystem.core import FileSystemInterface
 
 class MyCustomFileSystem(FileSystemInterface):
     def exists(self, path: str) -> bool:
@@ -215,14 +215,14 @@ class S3FileSystem(FileSystemInterface):
 ### 运行基础演示
 
 ```bash
-cd src/file_manager/examples
+cd src/filesystem/examples
 python basic_demo.py
 ```
 
 ### 运行性能比较
 
 ```bash
-cd src/file_manager/examples  
+cd src/filesystem/examples  
 python filesystem_comparison.py
 ```
 
@@ -232,17 +232,17 @@ python filesystem_comparison.py
 
 ```bash
 # 运行所有测试
-pytest src/file_manager/tests/ -v
+pytest src/filesystem/tests/ -v
 
 # 运行特定测试
-pytest src/file_manager/tests/test_core.py -v
-pytest src/file_manager/tests/test_local_filesystem.py -v
+pytest src/filesystem/tests/test_core.py -v
+pytest src/filesystem/tests/test_local_filesystem.py -v
 
 # 运行单元测试
-pytest src/file_manager/tests/ -m unit -v
+pytest src/filesystem/tests/ -m unit -v
 
 # 运行集成测试
-pytest src/file_manager/tests/ -m integration -v
+pytest src/filesystem/tests/ -m integration -v
 ```
 
 ## 最佳实践

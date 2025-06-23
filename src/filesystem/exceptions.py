@@ -1,4 +1,4 @@
-"""文件管理模块异常定义"""
+"""文件系统模块异常定义"""
 
 
 class FileManagerError(Exception):
